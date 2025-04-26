@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Bell, LogOut, User, PlusCircle } from "lucide-react"
+import { Bell, LogOut, User, PlusCircle, CalendarCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/context/auth-context"
 import { useRouter } from "next/navigation"
@@ -13,6 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useToast } from "@/components/ui/use-toast"
 
 export function Header() {
@@ -54,9 +55,14 @@ export function Header() {
           {isAuthenticated ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="rounded-full">
-                  <User className="h-5 w-5" />
-                  <span className="sr-only">User menu</span>
+                <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src={user?.avatar_url || ""} alt={user?.first_name || ""} />
+                    <AvatarFallback className="bg-primary text-primary-foreground">
+                      {user?.first_name?.[0]}
+                      {user?.last_name?.[0]}
+                    </AvatarFallback>
+                  </Avatar>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -68,12 +74,14 @@ export function Header() {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem>
-                  <Link href="/profile" className="flex w-full">
+                  <Link href="/profile" className="flex w-full items-center">
+                    <User className="mr-2 h-4 w-4" />
                     Profile
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem>
-                  <Link href="/my-events" className="flex w-full">
+                  <Link href="/my-events" className="flex w-full items-center">
+                    <CalendarCheck className="mr-2 h-4 w-4" />
                     My Events
                   </Link>
                 </DropdownMenuItem>
