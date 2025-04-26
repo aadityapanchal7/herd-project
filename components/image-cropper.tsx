@@ -6,7 +6,7 @@ import { useRef, useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
-import { Loader2, ZoomIn, RotateCw, Check, X } from "lucide-react"
+import { Loader2, ZoomIn, RotateCw, Check, X, Maximize } from "lucide-react"
 
 interface ImageCropperProps {
   imageFile: File | null
@@ -23,9 +23,25 @@ export default function ImageCropper({ imageFile, isOpen, onClose, onCropComplet
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
   const [isLoading, setIsLoading] = useState(true)
+  const [isMobile, setIsMobile] = useState(false)
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const imageRef = useRef<HTMLImageElement | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  // Detect mobile devices
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+
+    checkMobile()
+    window.addEventListener("resize", checkMobile)
+
+    return () => {
+      window.removeEventListener("resize", checkMobile)
+    }
+  }, [])
 
   // Load the image when the file changes
   useEffect(() => {
@@ -35,11 +51,16 @@ export default function ImageCropper({ imageFile, isOpen, onClose, onCropComplet
     setImageUrl(url)
 
     const img = new Image()
+    img.crossOrigin = "anonymous"
     img.src = url
     img.onload = () => {
       imageRef.current = img
       setIsLoading(false)
-      drawImage()
+
+      // Auto-fit the image when it loads
+      setTimeout(() => {
+        fitImageToCanvas()
+      }, 100)
     }
 
     return () => {
@@ -53,6 +74,28 @@ export default function ImageCropper({ imageFile, isOpen, onClose, onCropComplet
       drawImage()
     }
   }, [scale, rotation, position, isLoading])
+
+  // Auto-fit the image to the canvas
+  const fitImageToCanvas = () => {
+    const canvas = canvasRef.current
+    const img = imageRef.current
+
+    if (!canvas || !img) return
+
+    // Calculate the scale needed to fit the image within the canvas
+    const canvasSize = canvas.width
+    const imgSize = Math.max(img.width, img.height)
+
+    // Use a smaller scale for mobile to show more of the image
+    const targetScale = isMobile ? 0.8 : 0.9
+
+    // Calculate scale to fit the image within the canvas with some padding
+    const newScale = (canvasSize / imgSize) * targetScale
+
+    setScale(newScale)
+    setPosition({ x: 0, y: 0 })
+    setRotation(0)
+  }
 
   const drawImage = () => {
     const canvas = canvasRef.current
@@ -84,9 +127,19 @@ export default function ImageCropper({ imageFile, isOpen, onClose, onCropComplet
 
     // Restore the context state
     ctx.restore()
+
+    // Draw a circular overlay to show the crop area
+    ctx.save()
+    ctx.globalCompositeOperation = "destination-in"
+    ctx.beginPath()
+    ctx.arc(canvas.width / 2, canvas.height / 2, canvas.width / 2, 0, Math.PI * 2)
+    ctx.closePath()
+    ctx.fill()
+    ctx.restore()
   }
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    e.preventDefault()
     setIsDragging(true)
     setDragStart({
       x: e.clientX - position.x,
@@ -95,6 +148,7 @@ export default function ImageCropper({ imageFile, isOpen, onClose, onCropComplet
   }
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    e.preventDefault()
     if (!isDragging) return
 
     setPosition({
@@ -103,13 +157,15 @@ export default function ImageCropper({ imageFile, isOpen, onClose, onCropComplet
     })
   }
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    e.preventDefault()
     setIsDragging(false)
   }
 
   const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
     if (e.touches.length !== 1) return
 
+    e.preventDefault()
     setIsDragging(true)
     setDragStart({
       x: e.touches[0].clientX - position.x,
@@ -120,13 +176,15 @@ export default function ImageCropper({ imageFile, isOpen, onClose, onCropComplet
   const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
     if (!isDragging || e.touches.length !== 1) return
 
+    e.preventDefault()
     setPosition({
       x: e.touches[0].clientX - dragStart.x,
       y: e.touches[0].clientY - dragStart.y,
     })
   }
 
-  const handleTouchEnd = () => {
+  const handleTouchEnd = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault()
     setIsDragging(false)
   }
 
@@ -143,13 +201,8 @@ export default function ImageCropper({ imageFile, isOpen, onClose, onCropComplet
     const tempCtx = tempCanvas.getContext("2d")
     if (!tempCtx) return
 
-    tempCtx.beginPath()
-    tempCtx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2)
-    tempCtx.closePath()
-    tempCtx.clip()
-
-    // Draw the original canvas content centered in the circular area
-    tempCtx.drawImage(canvas, (canvas.width - size) / 2, (canvas.height - size) / 2, size, size, 0, 0, size, size)
+    // Draw the canvas content directly (it's already circular)
+    tempCtx.drawImage(canvas, 0, 0, size, size)
 
     // Convert to blob and complete
     tempCanvas.toBlob(
@@ -164,9 +217,7 @@ export default function ImageCropper({ imageFile, isOpen, onClose, onCropComplet
   }
 
   const handleReset = () => {
-    setScale(1)
-    setRotation(0)
-    setPosition({ x: 0, y: 0 })
+    fitImageToCanvas()
   }
 
   return (
@@ -183,6 +234,7 @@ export default function ImageCropper({ imageFile, isOpen, onClose, onCropComplet
         ) : (
           <div className="space-y-4">
             <div
+              ref={containerRef}
               className="relative overflow-hidden rounded-full mx-auto bg-muted"
               style={{ width: "250px", height: "250px" }}
             >
@@ -206,7 +258,7 @@ export default function ImageCropper({ imageFile, isOpen, onClose, onCropComplet
                 <ZoomIn className="h-4 w-4 mr-2" />
                 <span className="text-sm font-medium">Zoom</span>
               </div>
-              <Slider value={[scale]} min={0.5} max={3} step={0.01} onValueChange={(value) => setScale(value[0])} />
+              <Slider value={[scale]} min={0.1} max={3} step={0.01} onValueChange={(value) => setScale(value[0])} />
             </div>
 
             <div className="space-y-2">
@@ -218,8 +270,9 @@ export default function ImageCropper({ imageFile, isOpen, onClose, onCropComplet
             </div>
 
             <div className="flex justify-center space-x-2">
-              <Button variant="outline" size="sm" onClick={handleReset}>
-                Reset
+              <Button variant="outline" size="sm" onClick={handleReset} className="flex items-center">
+                <Maximize className="h-4 w-4 mr-2" />
+                Fit to Screen
               </Button>
             </div>
           </div>

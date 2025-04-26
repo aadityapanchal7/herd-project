@@ -345,7 +345,7 @@ export default function ProfilePage() {
                   <Button type="button" variant="outline" onClick={() => router.push("/")}>
                     Cancel
                   </Button>
-                  <Button type="submit" className="university-button" disabled={isSubmitting}>
+                  <Button type="submit" className="university-button" onClick={() => router.push("/")} disabled={isSubmitting}>
                     {isSubmitting ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
