@@ -58,7 +58,7 @@ export function Header() {
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
                   <Avatar className="h-10 w-10">
                     <AvatarImage src={user?.avatar_url || ""} alt={user?.first_name || ""} />
-                    <AvatarFallback className="bg-primary text-primary-foreground">
+                    <AvatarFallback className="university-button text-primary-foreground">
                       {user?.first_name?.[0]}
                       {user?.last_name?.[0]}
                     </AvatarFallback>
