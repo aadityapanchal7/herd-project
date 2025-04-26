@@ -16,6 +16,7 @@ import { AlertCircle, Camera, Loader2, User } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { supabase } from "@/lib/supabase"
 import { getUniversities, type University } from "@/lib/universities"
+import ImageCropper from "@/components/image-cropper"
 
 export default function ProfilePage() {
   const { toast } = useToast()
@@ -35,6 +36,10 @@ export default function ProfilePage() {
   })
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
+
+  // Image cropper state
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [isCropperOpen, setIsCropperOpen] = useState(false)
 
   // Fetch universities when component mounts
   useEffect(() => {
@@ -96,7 +101,7 @@ export default function ProfilePage() {
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
@@ -121,6 +126,13 @@ export default function ProfilePage() {
       return
     }
 
+    // Set the selected file and open the cropper
+    setSelectedFile(file)
+    setIsCropperOpen(true)
+  }
+
+  const handleCropComplete = async (croppedImageBlob: Blob) => {
+    setIsCropperOpen(false)
     setIsUploading(true)
 
     try {
@@ -132,12 +144,13 @@ export default function ProfilePage() {
       }
 
       // Generate a unique file name
-      const fileExt = file.name.split(".").pop()
-      const fileName = `${authData.user.id}-${Date.now()}.${fileExt}`
+      const fileName = `${authData.user.id}-${Date.now()}.jpg`
       const filePath = `avatars/${fileName}`
 
-      // Upload the file to Supabase Storage
-      const { error: uploadError } = await supabase.storage.from("profiles").upload(filePath, file)
+      // Upload the cropped image to Supabase Storage
+      const { error: uploadError } = await supabase.storage.from("profiles").upload(filePath, croppedImageBlob, {
+        contentType: "image/jpeg",
+      })
 
       if (uploadError) {
         throw uploadError
@@ -162,6 +175,7 @@ export default function ProfilePage() {
       })
     } finally {
       setIsUploading(false)
+      setSelectedFile(null)
     }
   }
 
@@ -270,7 +284,7 @@ export default function ProfilePage() {
                       type="file"
                       accept="image/*"
                       className="hidden"
-                      onChange={handleAvatarUpload}
+                      onChange={handleFileSelect}
                       disabled={isUploading}
                     />
                   </label>
@@ -331,7 +345,7 @@ export default function ProfilePage() {
                   <Button type="button" variant="outline" onClick={() => router.push("/")}>
                     Cancel
                   </Button>
-                  <Button type="submit" className="university-button" onClick={() => router.push("/")} disabled={isSubmitting}>
+                  <Button type="submit" className="university-button" disabled={isSubmitting}>
                     {isSubmitting ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -347,6 +361,17 @@ export default function ProfilePage() {
           </div>
         </div>
       </main>
+
+      {/* Image Cropper Modal */}
+      <ImageCropper
+        imageFile={selectedFile}
+        isOpen={isCropperOpen}
+        onClose={() => {
+          setIsCropperOpen(false)
+          setSelectedFile(null)
+        }}
+        onCropComplete={handleCropComplete}
+      />
     </div>
   )
 }
