@@ -32,7 +32,7 @@ export function HeroSection() {
   }
 
   return (
-    <section className="w-full py-8 bg-[#f0eeff]">
+    <section className="w-full py-8 university-primary-bg-toned">
       <div className="container px-4 md:px-6">
         {/* Search and filters bar */}
         <div className="bg-white rounded-lg shadow-sm p-4 mb-6">

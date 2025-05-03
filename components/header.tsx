@@ -1,7 +1,7 @@
-"use client"
+'use client'
 
 import Link from "next/link"
-import { Bell, LogOut, User, PlusCircle, CalendarCheck } from "lucide-react"
+import { Bell, LogOut, User, PlusCircle, CalendarCheck, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/context/auth-context"
 import { useRouter } from "next/navigation"
@@ -39,7 +39,10 @@ export function Header() {
 
         <div className="flex items-center gap-4">
           {isAuthenticated && (
-            <Button className="university-button" onClick={() => router.push("/create-event")}>
+            <Button
+              className="university-button"
+              onClick={() => router.push("/create-event")}
+            >
               <PlusCircle className="mr-2 h-4 w-4" />
               Create Event
             </Button>
@@ -73,19 +76,30 @@ export function Header() {
                   {user?.email}
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+
                 <DropdownMenuItem>
                   <Link href="/profile" className="flex w-full items-center">
                     <User className="mr-2 h-4 w-4" />
                     Profile
                   </Link>
                 </DropdownMenuItem>
+
                 <DropdownMenuItem>
                   <Link href="/my-events" className="flex w-full items-center">
                     <CalendarCheck className="mr-2 h-4 w-4" />
                     My Events
                   </Link>
                 </DropdownMenuItem>
+
+                <DropdownMenuItem>
+                  <Link href="/members" className="flex w-full items-center">
+                    <Users className="mr-2 h-4 w-4" />
+                    Members
+                  </Link>
+                </DropdownMenuItem>
+
                 <DropdownMenuSeparator />
+
                 <DropdownMenuItem onClick={handleLogout}>
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Log out</span>
