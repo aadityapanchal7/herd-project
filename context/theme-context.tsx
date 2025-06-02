@@ -24,8 +24,8 @@ interface ThemeContextType {
 }
 
 const defaultColors: ThemeColors = {
-  primary: "#8a70d6",
-  secondary: "#7a60c6",
+  primary: "#800080",
+  secondary: "#800080",
   text: "#FFFFFF",
 }
 

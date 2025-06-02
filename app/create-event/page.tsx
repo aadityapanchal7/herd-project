@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Header } from "@/components/header"
@@ -18,6 +17,7 @@ import { supabase } from "@/lib/supabase"
 import { format } from "date-fns"
 import { geocodeLocation, generateFallbackCoordinates } from "@/lib/geocoding"
 import { getUniversityByName } from "@/lib/universities"
+import { motion } from "framer-motion"
 
 export default function CreateEventPage() {
   const { toast } = useToast()
@@ -39,11 +39,8 @@ export default function CreateEventPage() {
   })
   const [dateInput, setDateInput] = useState<string>("")
 
-  // Don't redirect immediately - wait for loading to complete
   useEffect(() => {
-    // Only redirect if loading is complete AND user is definitely not authenticated
     if (!loading && !isAuthenticated) {
-      console.log("Not authenticated and loading complete, redirecting to login")
       toast({
         title: "Authentication Required",
         description: "You must be logged in to create an event",
@@ -56,22 +53,15 @@ export default function CreateEventPage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
-
-    // Reset coordinates when location changes
-    if (name === "location") {
-      setLocationCoordinates(null)
-    }
+    if (name === "location") setLocationCoordinates(null)
   }
 
-  // Handle geocoding when location field loses focus
   const handleLocationBlur = async () => {
     if (!formData.location || formData.location.trim() === "") return
-
     setIsGeocodingLocation(true)
     try {
       const coordinates = await geocodeLocation(formData.location, user?.university)
       setLocationCoordinates(coordinates)
-
       if (!coordinates) {
         toast({
           title: "Location Notice",
@@ -85,11 +75,9 @@ export default function CreateEventPage() {
     }
   }
 
-  // Handle date selection
   const handleDateSelect = (selectedDate: Date | undefined) => {
-    console.log("Date selected:", selectedDate)
     setDate(selectedDate)
-    setDateError(null) // Clear any date error when a date is selected
+    setDateError(null)
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -100,12 +88,9 @@ export default function CreateEventPage() {
 
     if (dateInput) {
       try {
-        // Simple validation for MM/DD/YYYY format
         if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateInput)) {
           const [month, day, year] = dateInput.split("/").map(Number)
           const newDate = new Date(year, month - 1, day)
-
-          // Check if it's a valid date
           if (!isNaN(newDate.getTime())) {
             setDate(newDate)
           } else {
@@ -119,7 +104,6 @@ export default function CreateEventPage() {
           return
         }
       } catch (error) {
-        console.error("Error parsing date:", error)
         setDateError("Please enter a valid date in MM/DD/YYYY format")
         setIsSubmitting(false)
         return
@@ -127,18 +111,14 @@ export default function CreateEventPage() {
     }
 
     try {
-      // Validate date first
       if (!date || isNaN(date.getTime())) {
         setDateError("Please enter a valid date in MM/DD/YYYY format")
         setIsSubmitting(false)
         return
       }
 
-      // Get the current user directly from Supabase
       const { data: authData, error: authError } = await supabase.auth.getUser()
-
       if (authError || !authData.user) {
-        console.error("Auth error in form submission:", authError || "No user found")
         setFormError("Authentication error. Please log in again.")
         toast({
           title: "Authentication Error",
@@ -149,74 +129,59 @@ export default function CreateEventPage() {
         return
       }
 
-      // Extract form data from state
       const title = formData.title
       const description = formData.description
       const time = formData.time
       const location = formData.location
       const maxAttendees = Number.parseInt(formData.maxAttendees)
-
-      // Format date for database
       const dateValue = format(date, "MMM d, yyyy")
 
-      console.log("Submitting event with date:", dateValue)
-
-      // Validate form data
       if (!title) {
         setFormError("Event title is required")
         setIsSubmitting(false)
         return
       }
-
       if (!category) {
         setFormError("Please select a category")
         setIsSubmitting(false)
         return
       }
-
       if (!description) {
         setFormError("Event description is required")
         setIsSubmitting(false)
         return
       }
-
       if (!time) {
         setFormError("Event time is required")
         setIsSubmitting(false)
         return
       }
-
       if (!location) {
         setFormError("Event location is required")
         setIsSubmitting(false)
         return
       }
-
       if (isNaN(maxAttendees) || maxAttendees <= 0) {
         setFormError("Please enter a valid number of maximum attendees")
         setIsSubmitting(false)
         return
       }
 
-      // If we don't have coordinates yet, try to geocode the location
       let coordinates = locationCoordinates
       if (!coordinates) {
         coordinates = await geocodeLocation(location, user?.university)
       }
-
-      // If geocoding failed, generate fallback coordinates
       if (!coordinates && user) {
         const university = await getUniversityByName(user.university)
         if (university) {
           coordinates = generateFallbackCoordinates(
             university.latitude,
             university.longitude,
-            Math.floor(Math.random() * 1000), // Use a random number as event ID for now
+            Math.floor(Math.random() * 1000),
           )
         }
       }
 
-      // Get the user's university ID
       let universityId = null
       if (user) {
         const university = await getUniversityByName(user.university)
@@ -225,7 +190,6 @@ export default function CreateEventPage() {
         }
       }
 
-      // Insert directly using the client-side Supabase instance
       const { data, error } = await supabase
         .from("events")
         .insert({
@@ -246,7 +210,6 @@ export default function CreateEventPage() {
         .select()
 
       if (error) {
-        console.error("Error creating event:", error)
         setFormError(error.message)
         toast({
           title: "Error",
@@ -261,7 +224,6 @@ export default function CreateEventPage() {
         router.push("/")
       }
     } catch (error) {
-      console.error("Error creating event:", error)
       setFormError("An unexpected error occurred. Please try again.")
       toast({
         title: "Error",
@@ -273,7 +235,6 @@ export default function CreateEventPage() {
     }
   }
 
-  // Show loading state while authentication is being checked
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col bg-[#f8f7fc]">
@@ -288,7 +249,6 @@ export default function CreateEventPage() {
     )
   }
 
-  // Only show the not authenticated message if we're sure the user is not authenticated
   if (!loading && !isAuthenticated) {
     return (
       <div className="min-h-screen flex flex-col bg-[#f8f7fc]">
@@ -313,9 +273,13 @@ export default function CreateEventPage() {
     <div className="min-h-screen flex flex-col bg-[#f8f7fc]">
       <Header />
       <main className="flex-1 container max-w-4xl mx-auto py-10 px-4">
-        <div className="bg-white rounded-lg shadow p-6">
+        <motion.div
+          initial={{ opacity: 0, y: 32 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, ease: "easeOut" }}
+          className="bg-white rounded-lg shadow p-6"
+        >
           <h1 className="text-2xl font-bold university-primary-text mb-6">Create New Event</h1>
-
           {formError && (
             <Alert variant="destructive" className="mb-6">
               <AlertCircle className="h-4 w-4" />
@@ -323,9 +287,18 @@ export default function CreateEventPage() {
               <AlertDescription>{formError}</AlertDescription>
             </Alert>
           )}
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
+          <motion.form
+            onSubmit={handleSubmit}
+            className="space-y-6"
+            initial="hidden"
+            animate="visible"
+            variants={{
+              hidden: {},
+              visible: { transition: { staggerChildren: 0.07 } },
+            }}
+          >
+            {/* Each animated field */}
+            <motion.div variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } }} className="space-y-2">
               <Label htmlFor="title">Event Title</Label>
               <Input
                 id="title"
@@ -335,9 +308,9 @@ export default function CreateEventPage() {
                 value={formData.title}
                 onChange={handleChange}
               />
-            </div>
+            </motion.div>
 
-            <div className="space-y-2">
+            <motion.div variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } }} className="space-y-2">
               <Label htmlFor="category">Category</Label>
               <Select name="category" value={category} onValueChange={setCategory} required>
                 <SelectTrigger>
@@ -350,9 +323,9 @@ export default function CreateEventPage() {
                   <SelectItem value="Arts">Arts</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
+            </motion.div>
 
-            <div className="space-y-2">
+            <motion.div variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } }} className="space-y-2">
               <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"
@@ -363,9 +336,12 @@ export default function CreateEventPage() {
                 value={formData.description}
                 onChange={handleChange}
               />
-            </div>
+            </motion.div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <motion.div
+              variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } }}
+              className="grid grid-cols-1 md:grid-cols-2 gap-6"
+            >
               <div className="space-y-2">
                 <Label htmlFor="date">Date (MM/DD/YYYY)</Label>
                 <Input
@@ -383,12 +359,9 @@ export default function CreateEventPage() {
                   onBlur={() => {
                     try {
                       if (dateInput) {
-                        // Simple validation for MM/DD/YYYY format
                         if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateInput)) {
                           const [month, day, year] = dateInput.split("/").map(Number)
                           const newDate = new Date(year, month - 1, day)
-
-                          // Check if it's a valid date
                           if (!isNaN(newDate.getTime())) {
                             setDate(newDate)
                             setDateError(null)
@@ -402,7 +375,6 @@ export default function CreateEventPage() {
                         setDate(undefined)
                       }
                     } catch (error) {
-                      console.error("Error parsing date:", error)
                       setDateError("Please enter a valid date in MM/DD/YYYY format")
                     }
                   }}
@@ -415,9 +387,9 @@ export default function CreateEventPage() {
                 <Label htmlFor="time">Time</Label>
                 <Input id="time" name="time" type="time" required value={formData.time} onChange={handleChange} />
               </div>
-            </div>
+            </motion.div>
 
-            <div className="space-y-2">
+            <motion.div variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } }} className="space-y-2">
               <Label htmlFor="location">Location</Label>
               <div className="relative">
                 <Input
@@ -445,9 +417,9 @@ export default function CreateEventPage() {
                   ? "Location found! It will be accurately displayed on the map."
                   : "Enter a specific location for accurate placement on the map."}
               </p>
-            </div>
+            </motion.div>
 
-            <div className="space-y-2">
+            <motion.div variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } }} className="space-y-2">
               <Label htmlFor="maxAttendees">Maximum Attendees</Label>
               <Input
                 id="maxAttendees"
@@ -459,18 +431,21 @@ export default function CreateEventPage() {
                 value={formData.maxAttendees}
                 onChange={handleChange}
               />
-            </div>
+            </motion.div>
 
-            <div className="flex justify-end space-x-4">
-              <Button type="button" variant="outline" onClick={() => router.push("/")}>
+            <motion.div
+              variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } }}
+              className="flex justify-end space-x-4"
+            >
+              <Button type="button" variant="outline" onClick={() => router.push("/dashboard")}>
                 Cancel
               </Button>
               <Button type="submit" className="university-button hover:bg-[#7a60c6]" disabled={isSubmitting}>
                 {isSubmitting ? "Creating..." : "Create Event"}
               </Button>
-            </div>
-          </form>
-        </div>
+            </motion.div>
+          </motion.form>
+        </motion.div>
       </main>
     </div>
   )

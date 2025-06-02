@@ -13,6 +13,7 @@ import { Users, School, Search, Filter, UserPlus } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { motion, AnimatePresence } from "framer-motion"
 
 type Profile = {
   id: string
@@ -186,34 +187,34 @@ export default function MembersPage() {
               </div>
             </div>
 
-            {filteredMembers.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                {filteredMembers.map((m) => (
-                  <Card
+            <AnimatePresence>
+              <motion.div
+                layout
+                className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
+              >
+                {filteredMembers.map((m, idx) => (
+                  <motion.div
                     key={m.id}
-                    className="flex flex-col items-center p-6 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow"
+                    initial={{ opacity: 0, y: 32 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 32 }}
+                    transition={{ duration: 0.5, ease: "easeOut", delay: idx * 0.05 }}
+                    layout
                   >
-                    <Avatar className="w-16 h-16 mb-3 border-2 university-border">
-                      <AvatarImage src={m.avatar_url ?? ''} alt={`${m.first_name} ${m.last_name}`} />
-                      <AvatarFallback>{`${m.first_name[0]}${m.last_name[0]}`}</AvatarFallback>
-                    </Avatar>
-                    <h3 className="font-medium text-lg text-center">
-                      {m.first_name} {m.last_name}
-                    </h3>
-                    <button className="mt-3 text-sm university-primary-text hover:underline">View Profile</button>
-                  </Card>
+                    <Card className="flex flex-col items-center p-6 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow">
+                      <Avatar className="w-16 h-16 mb-3 border-2 university-border">
+                        <AvatarImage src={m.avatar_url ?? ''} alt={`${m.first_name} ${m.last_name}`} />
+                        <AvatarFallback>{`${m.first_name[0]}${m.last_name[0]}`}</AvatarFallback>
+                      </Avatar>
+                      <h3 className="font-medium text-lg text-center">
+                        {m.first_name} {m.last_name}
+                      </h3>
+                      <button className="mt-3 text-sm university-primary-text hover:underline">View Profile</button>
+                    </Card>
+                  </motion.div>
                 ))}
-              </div>
-            ) : (
-              <div className="text-center py-16 bg-white rounded-xl shadow-sm">
-                <Users className="h-12 w-12 mx-auto text-[#8a70d6] mb-4" />
-                <h3 className="text-xl font-semibold mb-2">No Members Found</h3>
-                <p className="text-gray-600 mb-6">No members match your search criteria.</p>
-                <Button onClick={() => setSearchQuery("")} className="bg-[#8a70d6] hover:bg-[#7860c0] text-white">
-                  Clear Search
-                </Button>
-              </div>
-            )}
+              </motion.div>
+            </AnimatePresence>
           </>
         ) : (
           <div className="text-center py-16 bg-white rounded-xl shadow-sm mt-4">

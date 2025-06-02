@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useToast } from "@/components/ui/use-toast"
+import { motion } from "framer-motion"
 
 export function Header() {
   const { isAuthenticated, user, logout } = useAuth()
@@ -31,16 +32,33 @@ export function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-white">
+    <motion.header
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6, ease: "easeOut" }}
+      className="sticky top-0 z-50 w-full border-b bg-white"
+    >
       <div className="container flex h-16 items-center justify-between px-4 md:px-6">
-        <Link href="/" className="flex items-center">
+        <button
+          onClick={() => router.push(isAuthenticated ? "/dashboard" : "/")}
+          style={{ cursor: "pointer" }}
+          className="flex items-center"
+        >
           <h1 className="text-2xl font-semibold university-primary-text">Herd</h1>
-        </Link>
+          {isAuthenticated && (
+            <>
+              <h1 className="text-2xl hidden font-semibold university-primary-text md:pl-1.5">at</h1>
+              <span className="text-2xl hidden font-semibold university-primary-text md:pl-1.5">
+                {user?.university}
+              </span>
+            </>
+          )}
+        </button>
 
         <div className="flex items-center gap-4">
           {isAuthenticated && (
             <Button
-              className="university-button"
+              className="university-primary-bg hover:university-secondary-bg"
               onClick={() => router.push("/create-event")}
             >
               <PlusCircle className="mr-2 h-4 w-4" />
@@ -48,12 +66,6 @@ export function Header() {
             </Button>
           )}
 
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="h-5 w-5" />
-            <span className="absolute top-0 right-0 h-4 w-4 rounded-full bg-red-500 text-[10px] text-white flex items-center justify-center">
-              3
-            </span>
-          </Button>
 
           {isAuthenticated ? (
             <DropdownMenu>
@@ -120,6 +132,6 @@ export function Header() {
           )}
         </div>
       </div>
-    </header>
+    </motion.header>
   )
 }

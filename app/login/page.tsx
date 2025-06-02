@@ -10,6 +10,7 @@ import { useAuth } from "@/context/auth-context"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/components/ui/use-toast"
+import { motion } from "framer-motion" // <-- Add this import
 
 export default function LoginPage() {
   const { login } = useAuth()
@@ -37,7 +38,7 @@ export default function LoginPage() {
           title: "Login successful",
           description: "Welcome back to Herd!",
         })
-        router.push("/")
+        router.push("/dashboard")
       } else {
         toast({
           title: "Login failed",
@@ -56,15 +57,22 @@ export default function LoginPage() {
     }
   }
 
+  
+
   return (
     <div className="min-h-screen flex flex-col">
       <div className="container flex h-16 items-center px-4 md:px-6">
         <Link href="/" className="flex items-center">
-          <h1 className="text-2xl font-semibold text-[#8a70d6]">Herd</h1>
+          <h1 className="text-2xl font-semibold university-primary-text">Herd</h1>
         </Link>
       </div>
       <div className="flex-1 flex items-center justify-center">
-        <div className="mx-auto max-w-md space-y-6 p-6 bg-white rounded-lg shadow-md">
+        <motion.div
+          initial={{ opacity: 0, y: 32 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, ease: "easeOut" }}
+          className="mx-auto max-w-md space-y-6 p-6 bg-white rounded-lg shadow-md"
+        >
           <div className="space-y-2 text-center">
             <h1 className="text-3xl font-bold">Login to Herd</h1>
             <p className="text-gray-500">Enter your credentials to access your account</p>
@@ -85,7 +93,7 @@ export default function LoginPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
-                <Link className="text-sm text-[#8a70d6]" href="#">
+                <Link className="text-sm university-primary-text" href="#">
                   Forgot password?
                 </Link>
               </div>
@@ -98,17 +106,17 @@ export default function LoginPage() {
                 onChange={handleChange}
               />
             </div>
-            <Button className="w-full bg-[#8a70d6] hover:bg-[#7a60c6]" type="submit" disabled={isLoading}>
+            <Button className="w-full university-primary-button" type="submit" disabled={isLoading}>
               {isLoading ? "Logging in..." : "Login"}
             </Button>
             <div className="text-center text-sm">
               Don't have an account?{" "}
-              <Link className="text-[#8a70d6]" href="/signup">
+              <Link className="university-primary-text" href="/signup">
                 Sign up
               </Link>
             </div>
           </form>
-        </div>
+        </motion.div>
       </div>
     </div>
   )

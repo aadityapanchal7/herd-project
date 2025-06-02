@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Header } from "@/components/header"
@@ -17,6 +16,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { supabase } from "@/lib/supabase"
 import { getUniversities, type University } from "@/lib/universities"
 import ImageCropper from "@/components/image-cropper"
+import { motion } from "framer-motion"
 
 export default function ProfilePage() {
   const { toast } = useToast()
@@ -86,7 +86,6 @@ export default function ProfilePage() {
   useEffect(() => {
     // Only redirect if loading is complete AND user is definitely not authenticated
     if (!loading && !isAuthenticated) {
-      console.log("Not authenticated and loading complete, redirecting to login")
       toast({
         title: "Authentication Required",
         description: "You must be logged in to view your profile",
@@ -167,7 +166,6 @@ export default function ProfilePage() {
         description: "Your profile picture has been updated",
       })
     } catch (error) {
-      console.error("Error uploading avatar:", error)
       toast({
         title: "Upload failed",
         description: "There was a problem uploading your profile picture",
@@ -215,7 +213,6 @@ export default function ProfilePage() {
         description: "Your profile has been updated successfully",
       })
     } catch (error) {
-      console.error("Error updating profile:", error)
       setFormError("An error occurred while updating your profile")
       toast({
         title: "Update failed",
@@ -227,7 +224,6 @@ export default function ProfilePage() {
     }
   }
 
-  // Show loading state while authentication is being checked
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col bg-[#f8f7fc]">
@@ -246,9 +242,13 @@ export default function ProfilePage() {
     <div className="min-h-screen flex flex-col bg-[#f8f7fc]">
       <Header />
       <main className="flex-1 container max-w-4xl mx-auto py-10 px-4">
-        <div className="bg-white rounded-lg shadow p-6">
+        <motion.div
+          initial={{ opacity: 0, y: 32 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, ease: "easeOut" }}
+          className="bg-white rounded-lg shadow p-6"
+        >
           <h1 className="text-2xl font-bold university-primary-text mb-6">Edit Profile</h1>
-
           {formError && (
             <Alert variant="destructive" className="mb-6">
               <AlertCircle className="h-4 w-4" />
@@ -256,9 +256,13 @@ export default function ProfilePage() {
               <AlertDescription>{formError}</AlertDescription>
             </Alert>
           )}
-
           <div className="flex flex-col md:flex-row gap-8 mb-8">
-            <div className="flex flex-col items-center">
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, ease: "easeOut", delay: 0.2 }}
+              className="flex flex-col items-center"
+            >
               <div className="relative">
                 <Avatar className="w-32 h-32 border-4 university-border">
                   <AvatarImage src={avatarUrl || ""} alt={`${formData.firstName} ${formData.lastName}`} />
@@ -291,8 +295,7 @@ export default function ProfilePage() {
                 </div>
               </div>
               <p className="mt-4 text-sm text-gray-500">Upload a profile picture (max 5MB)</p>
-            </div>
-
+            </motion.div>
             <div className="flex-1">
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -311,13 +314,11 @@ export default function ProfilePage() {
                     <Input id="lastName" name="lastName" value={formData.lastName} onChange={handleChange} required />
                   </div>
                 </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
                   <Input id="email" name="email" value={formData.email} disabled className="bg-gray-50" />
                   <p className="text-xs text-gray-500">Email cannot be changed</p>
                 </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="university">University</Label>
                   <div className="flex items-center h-10 border rounded-md border-input bg-gray-50 px-3">
@@ -340,12 +341,11 @@ export default function ProfilePage() {
                   </div>
                   <p className="text-xs text-gray-500">University cannot be changed after account creation</p>
                 </div>
-
                 <div className="flex justify-end space-x-4 pt-4">
-                  <Button type="button" variant="outline" onClick={() => router.push("/")}>
+                  <Button type="button" variant="outline" onClick={() => router.push("/dashboard")}>
                     Cancel
                   </Button>
-                  <Button type="submit" className="university-button" onClick={() => router.push("/")} disabled={isSubmitting}>
+                  <Button type="submit"  className="university-button" onClick={() => router.push("/dashboard")}  disabled={isSubmitting}>
                     {isSubmitting ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -359,9 +359,8 @@ export default function ProfilePage() {
               </form>
             </div>
           </div>
-        </div>
+        </motion.div>
       </main>
-
       {/* Image Cropper Modal */}
       <ImageCropper
         imageFile={selectedFile}

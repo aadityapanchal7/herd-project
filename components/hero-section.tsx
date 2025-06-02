@@ -9,6 +9,7 @@ import { useEvents } from "@/context/events-context"
 import { useView } from "@/context/view-context"
 import { useAuth } from "@/context/auth-context"
 import type { EventCategory } from "@/lib/types"
+import { motion } from "framer-motion"
 
 export function HeroSection() {
   const {
@@ -33,18 +34,28 @@ export function HeroSection() {
   return (
     <>
       {/* Header section */}
-      <div className="university-primary-bg text-white py-8">
+      <motion.div
+        initial={{ opacity: 0, y: 32 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+        className="university-primary-bg text-white py-8"
+      >
         <div className="container max-w-6xl mx-auto px-4">
           <h1 className="text-3xl md:text-4xl font-bold">Discover Events</h1>
           <p className="mt-2 text-white/80">Find and join events happening around your campus</p>
         </div>
-      </div>
+      </motion.div>
 
       {/* Search and filters section */}
       <section className="w-full py-8 bg-gradient-to-b from-[#f0edfb] to-[#f8f7fc]">
         <div className="container max-w-6xl mx-auto px-4">
           {/* Search and filters bar */}
-          <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
+          <motion.div
+            initial={{ opacity: 0, y: 32 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, ease: "easeOut", delay: 0.15 }}
+            className="bg-white rounded-xl shadow-sm p-4 mb-6"
+          >
             <div className="flex flex-col md:flex-row gap-4">
               <form onSubmit={handleSearch} className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -61,7 +72,6 @@ export function HeroSection() {
                   }}
                 />
               </form>
-
               <div className="flex gap-3">
                 <Button
                   variant="outline"
@@ -102,49 +112,44 @@ export function HeroSection() {
                 </Button>
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* View toggle buttons */}
-          <div className="flex mb-6">
-            <div className="inline-flex bg-gray-100 rounded-lg overflow-hidden p-1">
+            <motion.div
+              initial={{ opacity: 0, y: 32 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, ease: "easeOut", delay: 0.3 }}
+              className="flex items-center justify-center mb-6"
+            >
+              <span className="h-px flex-1 bg-gradient-to-r from-transparent to-gray-300 dark:to-gray-600"></span>
+              <div className="inline-flex bg-gray-100 rounded-full shadow-sm p-1 mx-4">
               <Button
                 variant="ghost"
-                className={`px-3 py-2 ${
-                  activeView === "list"
-                    ? "bg-white university-primary-text  font-medium rounded-md shadow-sm"
-                    : "text-gray-600 university-primary-text:hover"
+                className={`px-2 py-1 md:px-4 md:py-2 transition-all duration-200 rounded-full ${
+                activeView === "list"
+                  ? "bg-white university-primary-text font-semibold shadow-md"
+                  : "text-gray-600 hover:bg-gray-200"
                 }`}
                 onClick={() => setActiveView("list")}
               >
-                <List className="h-4 w-4 mr-2" />
+                <List className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
                 List View
               </Button>
               <Button
                 variant="ghost"
-                className={`px-3 py-2 ${
-                  activeView === "map"
-                    ? "bg-white university-primary-text font-medium rounded-md shadow-sm"
-                    : "text-gray-600 university-primary-text:hover"
+                className={`px-2 py-1 md:px-4 md:py-2 transition-all duration-200 rounded-full ${
+                activeView === "map"
+                  ? "bg-white university-primary-text font-semibold shadow-md"
+                  : "text-gray-600 hover:bg-gray-200"
                 }`}
                 onClick={() => setActiveView("map")}
               >
-                <Map className="h-4 w-4 mr-2" />
+                <Map className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
                 Event Map
               </Button>
-              <Button
-                variant="ghost"
-                className={`px-3 py-2 ${
-                  activeView === "locations"
-                    ? "bg-white university-primary-text font-medium rounded-md shadow-sm"
-                    : "text-gray-600 university-primary-text:hover"
-                }`}
-                onClick={() => setActiveView("locations")}
-              >
-                <Map className="h-4 w-4 mr-2" />
-                Campus Locations
-              </Button>
-            </div>
-          </div>
+              </div>
+              <span className="h-px flex-1 bg-gradient-to-l from-transparent to-gray-300 dark:to-gray-600"></span>
+            </motion.div>
         </div>
       </section>
     </>

@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
+import { motion, AnimatePresence } from "framer-motion"
 
 export default function MyEventsPage() {
   const { isAuthenticated, user, loading: authLoading } = useAuth()
@@ -26,7 +27,6 @@ export default function MyEventsPage() {
   const { toast } = useToast()
 
   useEffect(() => {
-    // Redirect if not authenticated after auth check is complete
     if (!authLoading && !isAuthenticated) {
       toast({
         title: "Authentication Required",
@@ -85,7 +85,7 @@ export default function MyEventsPage() {
           description: "Failed to load your RSVPed events.",
           variant: "destructive",
         })
-        setRsvpedEvents([]) // Clear events on error
+        setRsvpedEvents([])
         setFilteredEvents([])
       } finally {
         setLoadingEvents(false)
@@ -138,7 +138,6 @@ export default function MyEventsPage() {
   const upcomingEvents = filteredEvents.filter((event) => new Date(event.date) >= now)
   const pastEvents = filteredEvents.filter((event) => new Date(event.date) < now)
 
-  // Show skeleton loading state while checking auth or fetching events
   if (authLoading || loadingEvents) {
     return (
       <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#f0edfb] to-[#f8f7fc]">
@@ -164,7 +163,6 @@ export default function MyEventsPage() {
     )
   }
 
-  // If authenticated but loading is finished
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#f0edfb] to-[#f8f7fc]">
       <Header />
@@ -217,11 +215,25 @@ export default function MyEventsPage() {
 
               <TabsContent value="upcoming">
                 {upcomingEvents.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {upcomingEvents.map((event) => (
-                      <EventCard key={event.id} event={event} />
-                    ))}
-                  </div>
+                  <AnimatePresence>
+                    <motion.div
+                      layout
+                      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                    >
+                      {upcomingEvents.map((event, idx) => (
+                        <motion.div
+                          key={event.id}
+                          initial={{ opacity: 0, y: 32 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 32 }}
+                          transition={{ duration: 0.5, ease: "easeOut", delay: idx * 0.05 }}
+                          layout
+                        >
+                          <EventCard event={event} />
+                        </motion.div>
+                      ))}
+                    </motion.div>
+                  </AnimatePresence>
                 ) : (
                   <div className="text-center py-16 bg-white rounded-xl shadow-sm">
                     <Calendar className="h-12 w-12 mx-auto university-primary-text mb-4" />
@@ -236,17 +248,31 @@ export default function MyEventsPage() {
 
               <TabsContent value="past">
                 {pastEvents.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {pastEvents.map((event) => (
-                      <EventCard key={event.id} event={event} />
-                    ))}
-                  </div>
+                  <AnimatePresence>
+                    <motion.div
+                      layout
+                      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                    >
+                      {pastEvents.map((event, idx) => (
+                        <motion.div
+                          key={event.id}
+                          initial={{ opacity: 0, y: 32 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 32 }}
+                          transition={{ duration: 0.5, ease: "easeOut", delay: idx * 0.05 }}
+                          layout
+                        >
+                          <EventCard event={event} />
+                        </motion.div>
+                      ))}
+                    </motion.div>
+                  </AnimatePresence>
                 ) : (
                   <div className="text-center py-16 bg-white rounded-xl shadow-sm">
                     <Calendar className="h-12 w-12 mx-auto university-primary-text mb-4" />
                     <h3 className="text-xl font-semibold mb-2">No past events</h3>
                     <p className="text-gray-600 mb-6">You don't have any past events you've RSVPed to.</p>
-                    <Button className="university-button university-button:hover text-white" onClick={() => router.push("/")}>
+                    <Button className="university-button university-button:hover text-white" onClick={() => router.push("/dashboard")}>
                       Discover Events
                     </Button>
                   </div>
@@ -261,7 +287,7 @@ export default function MyEventsPage() {
             <p className="text-gray-600 max-w-md mx-auto mb-8">
               You haven't RSVPed to any events yet. Discover and join events that interest you!
             </p>
-            <Button size="lg" className="university-button university-button:hover text-white" onClick={() => router.push("/")}>
+            <Button size="lg" className="university-button university-button:hover text-white" onClick={() => router.push("/dashboard")}>
               Discover Events
             </Button>
           </div>

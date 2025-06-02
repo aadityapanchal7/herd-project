@@ -13,11 +13,13 @@ import { useRouter } from "next/navigation"
 import { useToast } from "@/components/ui/use-toast"
 import { getUniversities, type University } from "@/lib/universities"
 import { Loader2 } from "lucide-react"
+import { motion } from "framer-motion"
 
 export default function SignupPage() {
   const { signup } = useAuth()
   const { setUniversityColors } = useTheme()
   const router = useRouter()
+  const { isAuthenticated, user, loading, refreshSession } = useAuth()
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
   const [universities, setUniversities] = useState<University[]>([])
@@ -111,6 +113,18 @@ export default function SignupPage() {
     }
   }
 
+  useEffect(() => {
+      // Only redirect if loading is complete AND user is definitely not authenticated
+      if (isAuthenticated) {
+        toast({
+          title: "Visit your dashboard",
+          description: "Explore Events!",
+          variant: "default",
+        })
+        router.push("/dashboard")
+      }
+    }, [isAuthenticated, loading, router, toast])
+
   return (
     <div className="min-h-screen flex flex-col">
       <div className="container flex h-16 items-center px-4 md:px-6">
@@ -119,7 +133,12 @@ export default function SignupPage() {
         </Link>
       </div>
       <div className="flex-1 flex items-center justify-center">
-        <div className="mx-auto max-w-md space-y-6 p-6 bg-white rounded-lg shadow-md">
+        <motion.div
+          initial={{ opacity: 0, y: 32 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, ease: "easeOut" }}
+          className="mx-auto max-w-md space-y-6 p-6 bg-white rounded-lg shadow-md"
+        >
           <div className="space-y-2 text-center">
             <h1 className="text-3xl font-bold">Create an account</h1>
             <p className="text-gray-500">Enter your information to get started</p>
@@ -261,7 +280,7 @@ export default function SignupPage() {
               </Link>
             </div>
           </form>
-        </div>
+        </motion.div>
       </div>
     </div>
   )
