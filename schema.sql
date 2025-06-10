@@ -34,6 +34,31 @@ CREATE TABLE event_rsvps (
   UNIQUE(event_id, user_id)
 );
 
+-- Function to keep track of attendee counts
+CREATE OR REPLACE FUNCTION update_current_attendees()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    UPDATE events SET current_attendees = current_attendees + 1
+    WHERE id = NEW.event_id;
+    RETURN NEW;
+  ELSIF TG_OP = 'DELETE' THEN
+    UPDATE events SET current_attendees = current_attendees - 1
+    WHERE id = OLD.event_id;
+    RETURN OLD;
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER event_rsvps_after_insert
+AFTER INSERT ON event_rsvps
+FOR EACH ROW EXECUTE FUNCTION update_current_attendees();
+
+CREATE TRIGGER event_rsvps_after_delete
+AFTER DELETE ON event_rsvps
+FOR EACH ROW EXECUTE FUNCTION update_current_attendees();
+
 -- Set up Row Level Security (RLS)
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE events ENABLE ROW LEVEL SECURITY;

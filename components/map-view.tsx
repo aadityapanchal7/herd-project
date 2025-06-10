@@ -222,24 +222,8 @@ export function MapView() {
         return
       }
 
-      // Update event attendee count
+      // Update attendee count locally
       const newAttendeeCount = eventData.current_attendees + 1
-      const { error: updateError } = await supabase
-        .from("events")
-        .update({
-          current_attendees: newAttendeeCount,
-        })
-        .eq("id", event.id)
-
-      if (updateError) {
-        toast({
-          title: "Error",
-          description: updateError.message,
-          variant: "destructive",
-        })
-        setIsRsvping(false)
-        return
-      }
 
       // Update the attendee count in the context
       updateEventAttendees(event.id, newAttendeeCount)
