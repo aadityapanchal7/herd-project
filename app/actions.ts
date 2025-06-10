@@ -129,17 +129,7 @@ export async function rsvpToEvent(eventId: number) {
     return { error: rsvpError.message }
   }
 
-  // Update event attendee count
-  const { error: updateError } = await supabase
-    .from("events")
-    .update({
-      current_attendees: event.current_attendees + 1,
-    })
-    .eq("id", eventId)
 
-  if (updateError) {
-    return { error: updateError.message }
-  }
 
   // Revalidate the events page
   revalidatePath("/")

@@ -180,24 +180,8 @@ export function EventCard({ event: initialEvent }: EventCardProps) {
         return
       }
 
-      // Update event attendee count
+      // Update event attendee count locally
       const newAttendeeCount = eventData.current_attendees + 1
-      const { error: updateError } = await supabase
-        .from("events")
-        .update({
-          current_attendees: newAttendeeCount,
-        })
-        .eq("id", id)
-
-      if (updateError) {
-        toast({
-          title: "Error",
-          description: updateError.message,
-          variant: "destructive",
-        })
-        setIsRsvping(false)
-        return
-      }
 
       // Update local state immediately
       setEvent((prev) => ({
