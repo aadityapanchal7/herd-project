@@ -440,7 +440,7 @@ export default function CreateEventPage() {
               <Button type="button" variant="outline" onClick={() => router.push("/dashboard")}>
                 Cancel
               </Button>
-              <Button type="submit" className="university-button hover:bg-[#7a60c6]" disabled={isSubmitting}>
+              <Button type="submit" className="university-button hover:bg-[#7a60c6]" onClick={() => router.push("/dashboard")} disabled={isSubmitting}>
                 {isSubmitting ? "Creating..." : "Create Event"}
               </Button>
             </motion.div>
