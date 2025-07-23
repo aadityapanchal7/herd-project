@@ -9,35 +9,31 @@ import { ViewProvider } from "@/context/view-context"
 import { ThemeProvider } from "@/context/theme-context"
 import { Toaster } from "@/components/ui/toaster"
 
-const inter = Inter({ subsets: ["latin"] })
+const inter = Inter({ subsets: ["latin"] });
 
-export const metadata: Metadata = {
-  title: "Herd - Campus Events",
-  description: "Find and join events happening around your campus",
-    generator: 'v0.dev'
-}
+export const metadata = {
+  title: "Herd Project",
+  description: "Manage and join community events",
+};
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode
-}>) {
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <html lang="en" className="light" data-theme="light">  
+    <html lang="en">
       <body className={inter.className}>
-        <NextThemeProvider defaultTheme="light" enableSystem={false} disableTransitionOnChange attribute='class' >
-          <AuthProvider>
-            <ThemeProvider>
-              <EventsProvider>
-                <ViewProvider>
-                  {children}
-                  <Toaster />
-                </ViewProvider>
-              </EventsProvider>
-            </ThemeProvider>
-          </AuthProvider>
-        </NextThemeProvider>
+        <AuthProvider>
+          <EventsProvider>
+            <ViewProvider>
+              <ThemeProvider>
+                {children}
+              </ThemeProvider>
+            </ViewProvider>
+          </EventsProvider>
+        </AuthProvider>
       </body>
     </html>
-  )
+  );
 }

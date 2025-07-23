@@ -1,15 +1,14 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useState } from "react"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Calendar, Filter, Search, Map, List } from "lucide-react"
-import { useEvents } from "@/context/events-context"
-import { useView } from "@/context/view-context"
-import { useAuth } from "@/context/auth-context"
-import type { EventCategory } from "@/lib/types"
-import { motion } from "framer-motion"
+import React, { useState, useRef, useEffect } from "react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Search, Filter, Calendar, Map, List } from "lucide-react";
+import { motion } from "framer-motion";
+import { useEvents } from "@/context/events-context";
+import { useView } from "@/context/view-context";
+import { useAuth } from "@/context/auth-context";
+import type { EventCategory } from "@/lib/types";
 
 export function HeroSection() {
   const {
@@ -18,18 +17,45 @@ export function HeroSection() {
     setSelectedCategory,
     selectedDate,
     setSelectedDate,
-    selectedUniversity,
-    setSelectedUniversity,
-    universities,
-  } = useEvents()
-  const { activeView, setActiveView } = useView()
-  const { isAuthenticated, user } = useAuth()
-  const [searchValue, setSearchValue] = useState("")
+  } = useEvents();
+  const { activeView, setActiveView } = useView();
+  const { isAuthenticated, user } = useAuth();
+
+  const [searchValue, setSearchValue] = useState("");
+  const [categoryOpen, setCategoryOpen] = useState(false);
+  const categoryRef = useRef<HTMLDivElement>(null);
+  const dateInputRef = useRef<HTMLInputElement & { showPicker?: () => void }>(null);
+
+  // Close category dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (
+        categoryRef.current &&
+        !categoryRef.current.contains(e.target as Node)
+      ) {
+        setCategoryOpen(false);
+      }
+    }
+    if (categoryOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [categoryOpen]);
 
   const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    setSearchTerm(searchValue)
-  }
+    e.preventDefault();
+    setSearchTerm(searchValue);
+  };
+
+  const categories: EventCategory[] = [
+    "All",
+    "Social",
+    "Academic",
+    "Sports",
+    "Arts",
+  ];
 
   return (
     <>
@@ -42,14 +68,17 @@ export function HeroSection() {
       >
         <div className="container max-w-6xl mx-auto px-4">
           <h1 className="text-3xl md:text-4xl font-bold">Discover Events</h1>
-          <p className="mt-2 text-white/80">Find and join events happening around your campus</p>
+          <p className="mt-2 text-white/80">
+            Find and join events happening around your campus
+          </p>
         </div>
       </motion.div>
 
-      {/* Search and filters section */}
+      {/* filter css */}
       <section className="w-full py-8 bg-gradient-to-b from-[#f0edfb] to-[#f8f7fc]">
         <div className="container max-w-6xl mx-auto px-4">
-          {/* Search and filters bar */}
+
+          {/* filter css */}
           <motion.div
             initial={{ opacity: 0, y: 32 }}
             animate={{ opacity: 1, y: 0 }}
@@ -57,6 +86,7 @@ export function HeroSection() {
             className="bg-white rounded-xl shadow-sm p-4 mb-6"
           >
             <div className="flex flex-col md:flex-row gap-4">
+              {/* search */}
               <form onSubmit={handleSearch} className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
@@ -65,70 +95,93 @@ export function HeroSection() {
                   className="w-full pl-10 pr-4 py-6 text-base border rounded-lg"
                   value={searchValue}
                   onChange={(e) => {
-                    setSearchValue(e.target.value)
-                    if (e.target.value === "") {
-                      setSearchTerm("")
-                    }
+                    setSearchValue(e.target.value);
+                    if (e.target.value === "") setSearchTerm("");
                   }}
                 />
               </form>
-              <div className="flex gap-3">
-                <Button
-                  variant="outline"
-                  className="flex items-center gap-2 h-12 px-4 border rounded-lg hover:border-[#8a70d6] hover:text-[#8a70d6]"
-                  onClick={() => {
-                    // Toggle through categories
-                    const categories: EventCategory[] = ["All", "Social", "Academic", "Sports", "Arts"]
-                    const currentIndex = categories.indexOf(selectedCategory)
-                    const nextIndex = (currentIndex + 1) % categories.length
-                    setSelectedCategory(categories[nextIndex])
-                  }}
-                >
-                  <Filter className="h-4 w-4" />
-                  <span>Category: {selectedCategory}</span>
-                </Button>
 
-                <Button
-                  variant="outline"
-                  className="flex items-center gap-2 h-12 px-4 border rounded-lg hover:border-[#8a70d6] hover:text-[#8a70d6]"
-                  onClick={() => {
-                    // Toggle through dates
-                    const dates = [
-                      "All",
-                      "Dec 8, 2023",
-                      "Dec 10, 2023",
-                      "Dec 12, 2023",
-                      "Dec 15, 2023",
-                      "Dec 18, 2023",
-                      "Dec 20, 2023",
-                    ]
-                    const currentIndex = dates.indexOf(selectedDate)
-                    const nextIndex = (currentIndex + 1) % dates.length
-                    setSelectedDate(dates[nextIndex])
-                  }}
-                >
-                  <Calendar className="h-4 w-4" />
-                  <span>Date: {selectedDate === "All" ? "All" : selectedDate}</span>
-                </Button>
+              <div className="flex gap-3 items-center">
+                {/* category */}
+                <div ref={categoryRef} className="relative inline-block text-left">
+                  <Button
+                    variant="outline"
+                    className="flex items-center gap-2 h-12 px-4 border rounded-lg hover:border-[#8a70d6] hover:text-[#8a70d6]"
+                    onClick={() => setCategoryOpen(o => !o)}
+                  >
+                    <Filter className="h-4 w-4" />
+                    <span>Category: {selectedCategory}</span>
+                  </Button>
+
+                  {categoryOpen && (
+                    <ul className="absolute right-0 z-10 mt-1 w-40 bg-white border border-gray-200 rounded-lg shadow-md">
+                      {categories.map(cat => (
+                        <li
+                          key={cat}
+                          onClick={() => {
+                            setSelectedCategory(cat);
+                            setCategoryOpen(false);
+                          }}
+                          className={`px-4 py-2 text-sm cursor-pointer hover:bg-gray-100 ${
+                            cat === selectedCategory
+                              ? "font-semibold text-[#8a70d6]"
+                              : "text-gray-700"
+                          }`}
+                        >
+                          {cat}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                {/* date */}
+                <div className="relative inline-block">
+                  <Button
+                    variant="outline"
+                    className="flex items-center gap-2 h-12 px-4 border rounded-lg hover:border-[#8a70d6] hover:text-[#8a70d6] relative z-10"
+                    onClick={() => {
+                      const el = dateInputRef.current;
+                      if (!el) return;
+                      if (typeof el.showPicker === "function") {
+                        el.showPicker();
+                      } else {
+                        el.focus();
+                        el.click();
+                      }
+                    }}
+                  >
+                    <Calendar className="h-4 w-4" />
+                    <span>Date: {selectedDate}</span>
+                  </Button>
+
+                  <input
+                    ref={dateInputRef}
+                    type="date"
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-0"
+                    value={selectedDate === "All" ? "" : selectedDate}
+                    onChange={e => setSelectedDate(e.target.value || "All")}
+                  />
+                </div>
               </div>
             </div>
           </motion.div>
 
-          {/* View toggle buttons */}
-            <motion.div
-              initial={{ opacity: 0, y: 32 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, ease: "easeOut", delay: 0.3 }}
-              className="flex items-center justify-center mb-6"
-            >
-              <span className="h-px flex-1 bg-gradient-to-r from-transparent to-gray-300 dark:to-gray-600"></span>
-              <div className="inline-flex bg-gray-100 rounded-full shadow-sm p-1 mx-4">
+
+          <motion.div
+            initial={{ opacity: 0, y: 32 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, ease: "easeOut", delay: 0.3 }}
+            className="flex items-center justify-center mb-6"
+          >
+            <span className="h-px flex-1 bg-gradient-to-r from-transparent to-gray-300"></span>
+            <div className="inline-flex bg-gray-100 rounded-full shadow-sm p-1 mx-4">
               <Button
                 variant="ghost"
                 className={`px-2 py-1 md:px-4 md:py-2 transition-all duration-200 rounded-full ${
-                activeView === "list"
-                  ? "bg-white university-primary-text font-semibold shadow-md"
-                  : "text-gray-600 hover:bg-gray-200"
+                  activeView === "list"
+                    ? "bg-white university-primary-text font-semibold shadow-md"
+                    : "text-gray-600 hover:bg-gray-200"
                 }`}
                 onClick={() => setActiveView("list")}
               >
@@ -138,20 +191,21 @@ export function HeroSection() {
               <Button
                 variant="ghost"
                 className={`px-2 py-1 md:px-4 md:py-2 transition-all duration-200 rounded-full ${
-                activeView === "map"
-                  ? "bg-white university-primary-text font-semibold shadow-md"
-                  : "text-gray-600 hover:bg-gray-200"
+                  activeView === "map"
+                    ? "bg-white university-primary-text font-semibold shadow-md"
+                    : "text-gray-600 hover:bg-gray-200"
                 }`}
                 onClick={() => setActiveView("map")}
               >
                 <Map className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
                 Event Map
               </Button>
-              </div>
-              <span className="h-px flex-1 bg-gradient-to-l from-transparent to-gray-300 dark:to-gray-600"></span>
-            </motion.div>
+            </div>
+            <span className="h-px flex-1 bg-gradient-to-l from-transparent to-gray-300"></span>
+          </motion.div>
+
         </div>
       </section>
     </>
-  )
+  );
 }
