@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ---------------------- */
+/*        BASE            */
+/* ---------------------- */
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -38,18 +41,19 @@
 
     --radius: 0.5rem;
   }
-}
 
-@layer base {
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
   }
 }
 
-/* University theme classes */
+/* ---------------------- */
+/*    UNIVERSITY THEME    */
+/* ---------------------- */
 .university-primary-bg {
   background-color: var(--primary-color);
 }
@@ -83,7 +87,9 @@
   --ring-color: var(--primary-color);
 }
 
-/* Mapbox custom styles */
+/* ---------------------- */
+/*       MAPBOX UI        */
+/* ---------------------- */
 .mapboxgl-popup-content {
   padding: 15px;
   border-radius: 8px;
@@ -97,44 +103,56 @@
   top: 8px;
 }
 
-.event-marker {
-  transition: all 0.2s ease;
-}
-
-.event-marker:hover {
-  transform: scale(1.2);
-}
-
 .mapboxgl-ctrl-logo {
   margin: 0 !important;
 }
 
-/* Fallback map styles */
+/* ---------------------- */
+/*     FALLBACK MAP       */
+/* ---------------------- */
 .fallback-map {
   background-color: #f0f0f0;
-  background-image: linear-gradient(
-      0deg,
-      transparent 24%,
-      rgba(0, 0, 0, 0.05) 25%,
-      rgba(0, 0, 0, 0.05) 26%,
-      transparent 27%,
-      transparent 74%,
-      rgba(0, 0, 0, 0.05) 75%,
-      rgba(0, 0, 0, 0.05) 76%,
-      transparent 77%,
-      transparent
-    ),
-    linear-gradient(
-      90deg,
-      transparent 24%,
-      rgba(0, 0, 0, 0.05) 25%,
-      rgba(0, 0, 0, 0.05) 26%,
-      transparent 27%,
-      transparent 74%,
-      rgba(0, 0, 0, 0.05) 75%,
-      rgba(0, 0, 0, 0.05) 76%,
-      transparent 77%,
-      transparent
-    );
+  background-image:
+    linear-gradient(0deg, transparent 24%, rgba(0,0,0,0.05) 25%, rgba(0,0,0,0.05) 26%, transparent 27%, transparent 74%, rgba(0,0,0,0.05) 75%, rgba(0,0,0,0.05) 76%, transparent 77%, transparent),
+    linear-gradient(90deg, transparent 24%, rgba(0,0,0,0.05) 25%, rgba(0,0,0,0.05) 26%, transparent 27%, transparent 74%, rgba(0,0,0,0.05) 75%, rgba(0,0,0,0.05) 76%, transparent 77%, transparent);
   background-size: 50px 50px;
 }
+
+/* --------------------------- */
+/* Leaflet Custom Marker Styles */
+/* --------------------------- */
+
+/* Outer container: invisible except for the inner dot */
+.custom-marker {
+  background: none !important;
+  border: none !important;
+}
+
+/* The colored circle itself */
+.custom-marker .marker-inner {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+/* Hover state: universal orange + scale */
+.custom-marker:hover .marker-inner {
+  background-color: #BF5700 !important;
+  transform: scale(1.25);
+}
+
+/* Permanent “selected” state: same as hover */
+.custom-marker.marker-selected .marker-inner {
+  background-color: #BF5700 !important;
+  transform: scale(1.25);
+}
+
+/* Category‑specific fill colors */
+.marker-social   .marker-inner { background-color: #A855F7; }
+.marker-academic .marker-inner { background-color: #22C55E; }
+.marker-sports   .marker-inner { background-color: #EF4444; }
+.marker-arts     .marker-inner { background-color: #EC4899; }
+.marker-default  .marker-inner { background-color: #6B7280; }

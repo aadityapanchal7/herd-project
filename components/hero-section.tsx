@@ -1,14 +1,12 @@
-"use client";
+'use client';
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Filter, Calendar, Map, List } from "lucide-react";
+import { Search, Filter, Calendar } from "lucide-react";
 import { motion } from "framer-motion";
 import { useEvents } from "@/context/events-context";
-import { useView } from "@/context/view-context";
 import { useAuth } from "@/context/auth-context";
-import type { EventCategory } from "@/lib/types";
 
 export function HeroSection() {
   const {
@@ -18,13 +16,14 @@ export function HeroSection() {
     selectedDate,
     setSelectedDate,
   } = useEvents();
-  const { activeView, setActiveView } = useView();
   const { isAuthenticated, user } = useAuth();
 
   const [searchValue, setSearchValue] = useState("");
   const [categoryOpen, setCategoryOpen] = useState(false);
   const categoryRef = useRef<HTMLDivElement>(null);
-  const dateInputRef = useRef<HTMLInputElement & { showPicker?: () => void }>(null);
+  const dateInputRef = useRef<HTMLInputElement & { showPicker?: () => void }>(
+    null
+  );
 
   // Close category dropdown when clicking outside
   useEffect(() => {
@@ -49,13 +48,9 @@ export function HeroSection() {
     setSearchTerm(searchValue);
   };
 
-  const categories: EventCategory[] = [
-    "All",
-    "Social",
-    "Academic",
-    "Sports",
-    "Arts",
-  ];
+  const categories = useMemo(() => {
+    return ["All", "Social", "Academic", "Sports", "Arts"];
+  }, []);
 
   return (
     <>
@@ -74,11 +69,9 @@ export function HeroSection() {
         </div>
       </motion.div>
 
-      {/* filter css */}
+      {/* filter bar */}
       <section className="w-full py-8 bg-gradient-to-b from-[#f0edfb] to-[#f8f7fc]">
         <div className="container max-w-6xl mx-auto px-4">
-
-          {/* filter css */}
           <motion.div
             initial={{ opacity: 0, y: 32 }}
             animate={{ opacity: 1, y: 0 }}
@@ -107,7 +100,7 @@ export function HeroSection() {
                   <Button
                     variant="outline"
                     className="flex items-center gap-2 h-12 px-4 border rounded-lg hover:border-[#8a70d6] hover:text-[#8a70d6]"
-                    onClick={() => setCategoryOpen(o => !o)}
+                    onClick={() => setCategoryOpen((o) => !o)}
                   >
                     <Filter className="h-4 w-4" />
                     <span>Category: {selectedCategory}</span>
@@ -115,11 +108,11 @@ export function HeroSection() {
 
                   {categoryOpen && (
                     <ul className="absolute right-0 z-10 mt-1 w-40 bg-white border border-gray-200 rounded-lg shadow-md">
-                      {categories.map(cat => (
+                      {categories.map((cat) => (
                         <li
                           key={cat}
                           onClick={() => {
-                            setSelectedCategory(cat);
+                            setSelectedCategory(cat as any);
                             setCategoryOpen(false);
                           }}
                           className={`px-4 py-2 text-sm cursor-pointer hover:bg-gray-100 ${
@@ -160,50 +153,13 @@ export function HeroSection() {
                     type="date"
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-0"
                     value={selectedDate === "All" ? "" : selectedDate}
-                    onChange={e => setSelectedDate(e.target.value || "All")}
+                    onChange={(e) => setSelectedDate(e.target.value || "All")}
                   />
                 </div>
               </div>
             </div>
           </motion.div>
-
-
-          <motion.div
-            initial={{ opacity: 0, y: 32 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, ease: "easeOut", delay: 0.3 }}
-            className="flex items-center justify-center mb-6"
-          >
-            <span className="h-px flex-1 bg-gradient-to-r from-transparent to-gray-300"></span>
-            <div className="inline-flex bg-gray-100 rounded-full shadow-sm p-1 mx-4">
-              <Button
-                variant="ghost"
-                className={`px-2 py-1 md:px-4 md:py-2 transition-all duration-200 rounded-full ${
-                  activeView === "list"
-                    ? "bg-white university-primary-text font-semibold shadow-md"
-                    : "text-gray-600 hover:bg-gray-200"
-                }`}
-                onClick={() => setActiveView("list")}
-              >
-                <List className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
-                List View
-              </Button>
-              <Button
-                variant="ghost"
-                className={`px-2 py-1 md:px-4 md:py-2 transition-all duration-200 rounded-full ${
-                  activeView === "map"
-                    ? "bg-white university-primary-text font-semibold shadow-md"
-                    : "text-gray-600 hover:bg-gray-200"
-                }`}
-                onClick={() => setActiveView("map")}
-              >
-                <Map className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
-                Event Map
-              </Button>
-            </div>
-            <span className="h-px flex-1 bg-gradient-to-l from-transparent to-gray-300"></span>
-          </motion.div>
-
+          {/* ← Toggle removed from here */}
         </div>
       </section>
     </>

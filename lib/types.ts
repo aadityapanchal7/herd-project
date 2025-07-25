@@ -16,6 +16,8 @@ export interface Event {
   university_id?: number
   latitude?: number
   longitude?: number
+  creator_name?: string;
+
 }
 
 export interface User {

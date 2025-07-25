@@ -1,20 +1,36 @@
-"use client"
+'use client'
 
-import { EventsList } from "@/components/events-list"
-import { MapView } from "@/components/map-view"
-import { CampusLocationsMap } from "@/components/campus-locations-map"
-import { useView } from "@/context/view-context"
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { Map as MapIcon, List as ListIcon } from 'lucide-react'
 
 export function ViewSelector() {
-  const { activeView } = useView()
+  const path = usePathname()  // e.g. "/dashboard" or "/map"
+
+  const activeClasses   = 'bg-white shadow text-[#BF5700]'
+  const inactiveClasses = 'text-zinc-500 hover:text-[#BF5700]'
 
   return (
-    <section className="w-full py-4">
-      <div className="container px-4 md:px-6">
-        {activeView === "list" && <EventsList />}
-        {activeView === "map" && <MapView />}
-        {activeView === "locations" && <CampusLocationsMap />}
-      </div>
-    </section>
+    <div className="flex items-center justify-center space-x-2 my-4">
+      <Link
+        href="/dashboard"
+        className={`flex items-center gap-1 px-4 py-2 rounded-full transition ${
+          path === '/dashboard' ? activeClasses : inactiveClasses
+        }`}
+      >
+        <ListIcon size={16} className="inline" />
+        <span>List View</span>
+      </Link>
+
+      <Link
+        href="/map"
+        className={`flex items-center gap-1 px-4 py-2 rounded-full transition ${
+          path === '/map' ? activeClasses : inactiveClasses
+        }`}
+      >
+        <MapIcon size={16} className="inline" />
+        <span>Event Map</span>
+      </Link>
+    </div>
   )
 }

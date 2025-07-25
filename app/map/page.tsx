@@ -1,17 +1,15 @@
 'use client'
 
-import Link from 'next/link'
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Header } from '@/components/header'
-import { HeroSection } from '@/components/hero-section'
 import { ConfigCheck } from '@/components/config-check'
-import { EventsList } from '@/components/events-list'
+import MapView from '@/components/map-view'
 import { ViewSelector } from '@/components/view-selector'
 import { useAuth } from '@/context/auth-context'
 import { useToast } from '@/components/ui/use-toast'
 
-export default function DashboardPage() {
+export default function MapPage() {
   const { isAuthenticated, loading: authLoading } = useAuth()
   const router = useRouter()
   const { toast } = useToast()
@@ -20,7 +18,7 @@ export default function DashboardPage() {
     if (!authLoading && !isAuthenticated) {
       toast({
         title: 'Authentication Required',
-        description: 'You must be logged in to view the dashboard',
+        description: 'You must be logged in to view the map',
         variant: 'destructive',
       })
       router.push('/login')
@@ -34,14 +32,11 @@ export default function DashboardPage() {
         <ConfigCheck />
       </div>
 
-      {/* Hero with its top search/filter bar */}
-      <HeroSection />
-
       {/* Tabs */}
       <ViewSelector />
 
-      {/* List of events */}
-      <EventsList />
+      {/* Standalone map + built‑in filters & sidebar */}
+      <MapView />
     </main>
   )
 }
