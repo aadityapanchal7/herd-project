@@ -80,7 +80,7 @@ export default function LeafletMap({
       scrollWheelZoom
     >
       <TileLayer
-        attribution="&copy; OpenStreetMap contributors"
+        attribution=""
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
 

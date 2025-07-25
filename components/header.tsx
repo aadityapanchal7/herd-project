@@ -58,7 +58,7 @@ export function Header() {
         <div className="flex items-center gap-4">
           {isAuthenticated && (
             <Button
-              className="university-primary-bg hover:university-secondary-bg"
+              className="university-button university-button:hover"
               onClick={() => router.push("/create-event")}
             >
               <PlusCircle className="mr-2 h-4 w-4" />

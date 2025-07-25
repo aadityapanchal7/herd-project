@@ -233,7 +233,7 @@ export default function MapView() {
       <div className="p-6 space-y-4">
         {/* ut info bar */}
         <div className="bg-white shadow-md rounded-lg p-4">
-          <h1 className="text-xl font-bold" style={{ color: '#BF5700' }}>
+          <h1 className="text-xl font-bold university-primary-text" >
             University of Texas at Austin Campus Map
           </h1>
           <p className="text-gray-700">
@@ -241,7 +241,7 @@ export default function MapView() {
           </p>
         </div>
         {/* filter bar */}
-        <div className="bg-[#BF5700] rounded-2xl p-4 flex flex-col md:flex-row items-center gap-4">
+        <div className="university-primary-bg rounded-2xl p-4 flex flex-col md:flex-row items-center gap-4">
           <div className="relative flex-1">
             <SearchIcon
               className="absolute left-3 top-1/2 -translate-y-1/2 text-white"
@@ -252,14 +252,14 @@ export default function MapView() {
               placeholder="Search for events…"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-white rounded-lg text-[#BF5700] placeholder:text-[#BF5700] focus:ring-2 focus:ring-white"
+              className="w-full pl-10 pr-4 py-2 bg-white rounded-lg  focus:ring-2 focus:ring-white"
             />
           </div>
           <div className="relative">
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className="appearance-none pl-4 pr-10 py-2 bg-white rounded-lg text-[#BF5700] focus:ring-2 focus:ring-white"
+              className="appearance-none pl-4 pr-10 py-2 bg-white rounded-lg focus:ring-2 focus:ring-white"
             >
               <option value="All">All Categories</option>
               {categories.map((cat) => (
@@ -269,7 +269,7 @@ export default function MapView() {
               ))}
             </select>
             <FilterIcon
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-white pointer-events-none"
+              className="absolute right-3 top-1/2 -translate-y-1/2  pointer-events-none"
               size={20}
             />
           </div>
@@ -284,7 +284,7 @@ export default function MapView() {
               onChange={(e) => setDateFilter(e.target.value)}
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
             />
-            <div className="flex items-center pl-4 pr-10 py-2 bg-white rounded-lg text-[#BF5700]">
+            <div className="flex items-center pl-4 pr-10 py-2 bg-white rounded-lg ">
               <CalIcon className="mr-2 pointer-events-none" size={20} />
               <span>
                 {dateFilter
@@ -320,7 +320,7 @@ export default function MapView() {
               </h2>
               <button
                 onClick={() => setViewSelected((v) => !v)}
-                className="bg-[#BF5700] hover:bg-[#a14e00] text-white font-semibold px-4 py-2 rounded-md"
+                className="university-button university-button:hover text-white font-semibold px-4 py-2 rounded-md"
               >
                 {toggleLabel}
               </button>
@@ -353,7 +353,7 @@ export default function MapView() {
                           className={`absolute top-2 right-2 text-white text-xs font-semibold px-2 py-1 rounded ${
                             isSelected
                               ? 'bg-red-500 hover:bg-red-600'
-                              : 'bg-[#BF5700] hover:bg-[#a14e00]'
+                              : 'university-button university-button:hover'
                           }`}
                         >
                           {isSelected ? 'Remove Event' : 'Add Event'}
@@ -376,7 +376,7 @@ export default function MapView() {
                             e.stopPropagation();
                             setViewEventDetail(evt);
                           }}
-                          className="absolute bottom-2 right-2 bg-[#BF5700] hover:bg-[#a14e00] text-white text-xs font-semibold px-2 py-1 rounded"
+                          className="absolute bottom-2 right-2 university-button university-button:hover text-white text-xs font-semibold px-2 py-1 rounded"
                         >
                           View Event
                         </button>
@@ -390,13 +390,13 @@ export default function MapView() {
                       </h3>
                       <p className="text-sm text-zinc-500 mb-1 flex items-center">
                         <CalIcon
-                          className="inline w-4 h-4 mr-1 text-[#BF5700]"
+                          className="inline w-4 h-4 mr-1 university-primary-text"
                         />
                         {evt.date} at {evt.time}
                       </p>
                       <p className="text-sm text-zinc-500 flex items-center">
                         <MapPin
-                          className="inline w-4 h-4 mr-1 text-[#BF5700]"
+                          className="inline w-4 h-4 mr-1 university-primary-text"
                         />
                         {evt.location}
                       </p>
@@ -442,13 +442,13 @@ export default function MapView() {
             </p>
             <p className="mb-1 flex items-center">
               <CalIcon
-                className="inline w-4 h-4 mr-1 text-[#BF5700]"
+                className="inline w-4 h-4 mr-1 university-primary-text"
               />
               {viewEventDetail.date} at {viewEventDetail.time}
             </p>
             <p className="mb-1 flex items-center">
               <MapPin
-                className="inline w-4 h-4 mr-1 text-[#BF5700]"
+                className="inline w-4 h-4 mr-1 university-primary-text"
               />
               {viewEventDetail.location}
             </p>
@@ -467,7 +467,7 @@ export default function MapView() {
                 viewEventDetail.current_attendees >= viewEventDetail.max_attendees ||
                 hasRSVPd
               }
-              className="mt-4 float-right bg-[#BF5700] hover:bg-[#a14e00] text-white px-4 py-2 rounded-md font-semibold disabled:opacity-50"
+              className="mt-4 float-right university-button university-button:hover text-white px-4 py-2 rounded-md font-semibold disabled:opacity-50"
             >
               {rsvpLoading
                 ? 'RSVP…'

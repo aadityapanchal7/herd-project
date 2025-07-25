@@ -4,7 +4,6 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import "leaflet/dist/leaflet.css";
 
-import { ThemeProvider as NextThemeProvider } from "@/components/theme-provider";
 import { AuthProvider } from "@/context/auth-context";
 import { EventsProvider } from "@/context/events-context";
 import { ViewProvider } from "@/context/view-context";
@@ -14,7 +13,7 @@ import { Toaster } from "@/components/ui/toaster";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Herd Project",
+  title: "Herd | Find Your Next Event",
   description: "Manage and join community events",
 };
 
