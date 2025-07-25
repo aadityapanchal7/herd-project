@@ -12,7 +12,7 @@ interface EventsContextType {
   filteredEvents: Event[]
   searchTerm: string
   selectedCategory: EventCategory
-  selectedDate: string
+  selectedDate: string // This will hold the YYYY-MM-DD string from the date picker or "All"
   selectedUniversity: number | null
   universities: University[]
   setSearchTerm: (term: string) => void
@@ -35,7 +35,7 @@ export function EventsProvider({ children }: { children: ReactNode }) {
   const [filteredEvents, setFilteredEvents] = useState<Event[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<EventCategory>("All")
-  const [selectedDate, setSelectedDate] = useState("All")
+  const [selectedDate, setSelectedDate] = useState("All") // State for dashboard date filter
   const [selectedUniversity, setSelectedUniversity] = useState<number | null>(null)
   const [universities, setUniversities] = useState<University[]>([])
   const [userRsvps, setUserRsvps] = useState<number[]>([])
@@ -110,7 +110,7 @@ export function EventsProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  // Filter events when search term, category, date, or university changes
+  // --- Filter events when search term, category, date, or university changes ---
   useEffect(() => {
     let filtered = [...events]
 
@@ -134,13 +134,48 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       filtered = filtered.filter((event) => event.category === selectedCategory)
     }
 
-    // Filter by date
+    // --- Filter by date - FIXED LOGIC ---
     if (selectedDate !== "All") {
-      filtered = filtered.filter((event) => event.date === selectedDate)
+      // selectedDate is the YYYY-MM-DD string from the <input type="date">
+      filtered = filtered.filter((event) => {
+        try {
+          // Parse the event's full date string into a Date object
+          // This assumes event.date is parseable (e.g., ISO string, "Month D, YYYY at HH:MM", etc.)
+          const eventDateObj = new Date(event.date);
+
+          // Check if the parsed date is valid
+          if (isNaN(eventDateObj.getTime())) {
+             console.warn("Invalid date for event:", event.id, event.date);
+             return false; // Exclude events with unparseable dates
+          }
+
+          // Format that Date object to YYYY-MM-DD in Central Time for comparison
+          // Using 'en-CA' locale gives the YYYY-MM-DD format directly.
+          const formatter = new Intl.DateTimeFormat('en-CA', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            timeZone: 'America/Chicago', // Ensure comparison is in the correct timezone
+          });
+
+          const eventDateYMD = formatter.format(eventDateObj);
+
+          // Compare the formatted event date with the selected date (YYYY-MM-DD)
+          // This comparison is now between two YYYY-MM-DD strings, both representing
+          // the date in America/Chicago time.
+          return eventDateYMD === selectedDate;
+        } catch (e) {
+          console.error("Error parsing or formatting date for filtering:", event.date, e);
+          // If parsing/formatting fails, exclude the event to prevent unexpected behavior
+          return false;
+        }
+      });
     }
+    // --- End Filter by date ---
 
     setFilteredEvents(filtered)
   }, [events, searchTerm, selectedCategory, selectedDate, selectedUniversity])
+  // --- End Filtering useEffect ---
 
   const fetchEvents = async () => {
     setLoading(true)
@@ -166,7 +201,8 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       }
 
       setEvents(data || [])
-      setFilteredEvents(data || [])
+      // Note: filteredEvents will be updated by the useEffect above
+      // No need to setFilteredEvents here directly anymore.
     } catch (error) {
       console.error("Error fetching events:", error)
       setError("Failed to load events")
@@ -254,15 +290,15 @@ export function EventsProvider({ children }: { children: ReactNode }) {
     <EventsContext.Provider
       value={{
         events,
-        filteredEvents,
+        filteredEvents, // This now uses the correctly filtered list
         searchTerm,
         selectedCategory,
-        selectedDate,
+        selectedDate, // Provide the selectedDate state
         selectedUniversity,
         universities,
         setSearchTerm,
         setSelectedCategory,
-        setSelectedDate,
+        setSelectedDate, // Provide the setter for selectedDate
         setSelectedUniversity,
         rsvpToEvent: handleRsvpToEvent,
         userRsvps,

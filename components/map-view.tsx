@@ -288,12 +288,13 @@ export default function MapView() {
               <CalIcon className="mr-2 pointer-events-none" size={20} />
               <span>
                 {dateFilter
-                  ? new Date(dateFilter).toLocaleDateString(undefined, {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric',
-                    })
-                  : 'Select date'}
+  ? (() => {
+      const [yyyy, mm, dd] = dateFilter.split('-')
+      return `${new Date(+yyyy, +mm - 1, +dd).toLocaleDateString(undefined, {
+        month: 'short', day: 'numeric', year: 'numeric'
+      })}`
+    })()
+  : 'Select date'}
               </span>
             </div>
           </div>
