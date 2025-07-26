@@ -1,12 +1,10 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { CalendarIcon, MapPin, MessageSquare, Users } from "lucide-react"
+import { CalendarIcon, MapPin, Users } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/context/auth-context"
-import { useEvents } from "@/context/events-context"
-import { useRouter } from "next/navigation"
 import { useToast } from "@/components/ui/use-toast"
 import type { Event } from "@/lib/types"
 import { supabase } from "@/lib/supabase"
@@ -15,50 +13,44 @@ interface EventCardProps {
   event: Event
 }
 
-export function EventCard({ event: initialEvent }: EventCardProps) {
-  // Use local state to track the event data so we can update it immediately
-  const [event, setEvent] = useState<Event>(initialEvent)
-  const { title, category, description, date, time, location, max_attendees, current_attendees, verified, id } = event
-
+export function EventCard({ event }: EventCardProps) {
+  const { title, category, description, date, time, location, max_attendees, id, creator_name, verified } = event
   const { isAuthenticated, user } = useAuth()
-  const { userRsvps, addUserRsvp, refreshEvents, updateEventAttendees } = useEvents()
-  const router = useRouter()
   const { toast } = useToast()
   const [isRsvping, setIsRsvping] = useState(false)
+  const [attendeeCount, setAttendeeCount] = useState<number>(0)
+  const [hasRSVPd, setHasRSVPd] = useState(false)
 
-  // Listen for updates to this specific event
+  // Fetch RSVP count & RSVP status for this event
   useEffect(() => {
-    const subscription = supabase
-      .channel(`event-${id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "events",
-          filter: `id=eq.${id}`,
-        },
-        (payload) => {
-          console.log(`Event ${id} updated:`, payload)
-          if (payload.new) {
-            setEvent((current) => ({
-              ...current,
-              ...(payload.new as Event),
-            }))
-          }
-        },
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(subscription)
+    const fetchAttendees = async () => {
+      // Get number of RSVPs for this event
+      const { count } = await supabase
+        .from("event_rsvps")
+        .select("*", { count: "exact", head: true })
+        .eq("event_id", id)
+      setAttendeeCount(count || 0)
     }
-  }, [id])
+    fetchAttendees()
+  }, [id, isRsvping])
 
-  // Update local state when initialEvent changes (e.g., from parent component)
   useEffect(() => {
-    setEvent(initialEvent)
-  }, [initialEvent])
+    // Check if user has RSVP'd
+    const checkRSVP = async () => {
+      if (isAuthenticated && user) {
+        const { data } = await supabase
+          .from("event_rsvps")
+          .select("*")
+          .eq("event_id", id)
+          .eq("user_id", user.id)
+          .single()
+        setHasRSVPd(!!data)
+      } else {
+        setHasRSVPd(false)
+      }
+    }
+    checkRSVP()
+  }, [isAuthenticated, user, id, isRsvping])
 
   const getCategoryColor = (category: string) => {
     switch (category) {
@@ -76,25 +68,22 @@ export function EventCard({ event: initialEvent }: EventCardProps) {
   }
 
   const handleRSVP = async () => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !user) {
       toast({
         title: "Login Required",
         description: "Please login to RSVP for events",
         variant: "destructive",
       })
-      router.push("/login")
       return
     }
-
-    if (userRsvps.includes(id)) {
+    if (hasRSVPd) {
       toast({
         title: "Already RSVP'd",
         description: "You've already RSVP'd to this event",
       })
       return
     }
-
-    if (current_attendees >= max_attendees) {
+    if (attendeeCount >= max_attendees) {
       toast({
         title: "Event Full",
         description: "This event has reached its maximum capacity",
@@ -106,120 +95,26 @@ export function EventCard({ event: initialEvent }: EventCardProps) {
     setIsRsvping(true)
 
     try {
-      // Get the current user directly from Supabase
-      const { data: authData, error: authError } = await supabase.auth.getUser()
-
-      if (authError || !authData.user) {
-        console.error("Auth error in RSVP:", authError || "No user found")
-        toast({
-          title: "Authentication Error",
-          description: "Please log in again to RSVP.",
-          variant: "destructive",
-        })
-        setIsRsvping(false)
-        return
-      }
-
-      // Check if already RSVP'd
-      const { data: existingRsvp } = await supabase
-        .from("event_rsvps")
-        .select()
-        .eq("event_id", id)
-        .eq("user_id", authData.user.id)
-        .single()
-
-      if (existingRsvp) {
-        toast({
-          title: "Already RSVP'd",
-          description: "You've already RSVP'd to this event",
-        })
-        setIsRsvping(false)
-        return
-      }
-
-      // Get event details
-      const { data: eventData, error: eventError } = await supabase
-        .from("events")
-        .select("current_attendees, max_attendees")
-        .eq("id", id)
-        .single()
-
-      if (eventError) {
-        toast({
-          title: "Error",
-          description: "Event not found",
-          variant: "destructive",
-        })
-        setIsRsvping(false)
-        return
-      }
-
-      if (eventData.current_attendees >= eventData.max_attendees) {
-        toast({
-          title: "Event Full",
-          description: "This event has reached its maximum capacity",
-          variant: "destructive",
-        })
-        setIsRsvping(false)
-        return
-      }
-
       // Insert RSVP
-      const { error: rsvpError } = await supabase.from("event_rsvps").insert({
+      const { error } = await supabase.from("event_rsvps").insert({
         event_id: id,
-        user_id: authData.user.id,
+        user_id: user.id,
       })
-
-      if (rsvpError) {
+      if (error) {
         toast({
           title: "Error",
-          description: rsvpError.message,
+          description: error.message,
           variant: "destructive",
         })
         setIsRsvping(false)
         return
       }
-
-      // Update event attendee count
-      const newAttendeeCount = eventData.current_attendees + 1
-      const { error: updateError } = await supabase
-        .from("events")
-        .update({
-          current_attendees: newAttendeeCount,
-        })
-        .eq("id", id)
-
-      if (updateError) {
-        toast({
-          title: "Error",
-          description: updateError.message,
-          variant: "destructive",
-        })
-        setIsRsvping(false)
-        return
-      }
-
-      // Update local state immediately
-      setEvent((prev) => ({
-        ...prev,
-        current_attendees: newAttendeeCount,
-      }))
-
-      // Update the attendee count in the context
-      updateEventAttendees(id, newAttendeeCount)
-
-      // Add to user's RSVPs in context
-      addUserRsvp(id)
-
       toast({
         title: "RSVP Successful",
         description: "You have successfully RSVP'd to this event",
       })
-
-      // Refresh events in the background to keep everything in sync
-      refreshEvents()
+      setHasRSVPd(true)
     } catch (error) {
-      console.error("Error RSVPing to event:", error)
       toast({
         title: "RSVP Failed",
         description: "An unexpected error occurred",
@@ -229,25 +124,6 @@ export function EventCard({ event: initialEvent }: EventCardProps) {
       setIsRsvping(false)
     }
   }
-
-  const handleChat = () => {
-    if (!isAuthenticated) {
-      toast({
-        title: "Login Required",
-        description: "Please login to chat about events",
-        variant: "destructive",
-      })
-      router.push("/login")
-      return
-    }
-
-    toast({
-      title: "Chat Coming Soon",
-      description: "This feature is coming soon!",
-    })
-  }
-
-  const isRSVPd = userRsvps.includes(id)
 
   return (
     <div className="bg-white rounded-lg border p-6 transition-shadow hover:shadow-md">
@@ -274,6 +150,11 @@ export function EventCard({ event: initialEvent }: EventCardProps) {
         )}
       </div>
       <h3 className="text-xl font-bold mb-2">{title}</h3>
+      {creator_name && (
+        <p className="text-sm text-gray-500 mb-2">
+          <span className="font-medium">Hosted by:</span> {creator_name}
+        </p>
+      )}
       <p className="text-gray-600 mb-4">{description}</p>
       <div className="space-y-2 mb-4">
         <div className="flex items-center text-gray-500">
@@ -289,21 +170,27 @@ export function EventCard({ event: initialEvent }: EventCardProps) {
         <div className="flex items-center text-gray-500">
           <Users className="w-4 h-4 mr-2" />
           <span>
-            {current_attendees} / {max_attendees} attendees
+            {attendeeCount} / {max_attendees} attendees
           </span>
         </div>
       </div>
-      <div className="flex justify-between items-center">
-        <Button variant="outline" size="sm" className="flex items-center gap-1" onClick={handleChat}>
-          <MessageSquare className="h-4 w-4" />
-          Chat
-        </Button>
+      <div className="flex justify-end items-center">
         <Button
-          className={isRSVPd ? "bg-green-600 hover:bg-green-700" : "university-button"}
+          className={
+            hasRSVPd
+              ? "bg-green-600 hover:bg-green-700"
+              : "university-button"
+          }
           onClick={handleRSVP}
-          disabled={isRSVPd || current_attendees >= max_attendees || isRsvping}
+          disabled={hasRSVPd || attendeeCount >= max_attendees || isRsvping}
         >
-          {isRsvping ? "Processing..." : isRSVPd ? "RSVP'd" : current_attendees >= max_attendees ? "Full" : "RSVP"}
+          {isRsvping
+            ? "Processing..."
+            : attendeeCount >= max_attendees
+            ? "Full"
+            : hasRSVPd
+            ? "RSVP'd"
+            : "RSVP"}
         </Button>
       </div>
     </div>

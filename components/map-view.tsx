@@ -1,4 +1,3 @@
-'use client'
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import {
@@ -14,9 +13,11 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/components/ui/use-toast';
 import type { Event } from '@/lib/types';
+
 const LeafletMap = dynamic(() => import('@/components/leaflet-map'), {
   ssr: false,
 });
+
 type EventWithCoords = Event & {
   latitude: number;
   longitude: number;
@@ -24,10 +25,13 @@ type EventWithCoords = Event & {
   max_attendees: number;
   current_attendees: number;
 };
+
 export default function MapView() {
   const { toast } = useToast();
   const { user, isAuthenticated } = useAuth();
   const { events } = useEvents();
+
+  // 1. Build events with coordinates
   const eventsWithCoordinates = useMemo(
     () =>
       events
@@ -38,7 +42,7 @@ export default function MapView() {
                 ...evt,
                 latitude: c.latitude,
                 longitude: c.longitude,
-                creator_name: evt.creator_name || "", 
+                creator_name: evt.creator_name || "",
                 max_attendees: evt.max_attendees,
                 current_attendees: evt.current_attendees,
               } as EventWithCoords)
@@ -47,13 +51,38 @@ export default function MapView() {
         .filter((e): e is EventWithCoords => !!e),
     [events]
   );
+
+  // 2. Attendee counts state (event_id -> count)
+  const [attendeeCounts, setAttendeeCounts] = useState<{ [key: number]: number }>({});
+
+  // Load all attendee counts from event_rsvps
+  async function loadAttendeeCounts() {
+    if (eventsWithCoordinates.length === 0) return;
+    const eventIds = eventsWithCoordinates.map(e => e.id);
+    const { data, error } = await supabase
+      .from('event_rsvps')
+      .select('event_id');
+    if (error) return;
+    const counts: { [key: number]: number } = {};
+    for (const eid of eventIds) counts[eid] = 0;
+    for (const row of data || []) {
+      counts[row.event_id] = (counts[row.event_id] || 0) + 1;
+    }
+    setAttendeeCounts(counts);
+  }
+
+  useEffect(() => {
+    loadAttendeeCounts();
+    // eslint-disable-next-line
+  }, [eventsWithCoordinates.length]);
+
+  // 3. Filters
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [dateFilter, setDateFilter] = useState('');
-  const dateInputRef = useRef<HTMLInputElement & { showPicker?: () => void }>(
-    null
-  );
+  const dateInputRef = useRef<HTMLInputElement & { showPicker?: () => void }>(null);
   const categories = ['Social', 'Academic', 'Sports', 'Arts'];
+
   const filteredEvents = useMemo(
     () =>
       eventsWithCoordinates.filter((evt) => {
@@ -72,11 +101,12 @@ export default function MapView() {
       }),
     [eventsWithCoordinates, searchTerm, categoryFilter, dateFilter]
   );
+
+  // 4. Event selection logic
   const [selectedEvents, setSelectedEvents] = useState<EventWithCoords[]>([]);
   const [panToEvent, setPanToEvent] = useState<EventWithCoords | null>(null);
-  const [viewEventDetail, setViewEventDetail] = useState<
-    EventWithCoords | null
-  >(null);
+  const [viewEventDetail, setViewEventDetail] = useState<EventWithCoords | null>(null);
+
   const toggleSelect = (evt: EventWithCoords) => {
     setSelectedEvents((prev) =>
       prev.some((e) => e.id === evt.id)
@@ -84,10 +114,12 @@ export default function MapView() {
         : [...prev, evt]
     );
   };
+
   const handleMarkerClick = (evt: EventWithCoords) => {
     toggleSelect(evt);
     setPanToEvent(evt);
   };
+
   const handleCardClick = (evt: EventWithCoords) => {
     if (panToEvent?.id === evt.id) {
       setPanToEvent(null);
@@ -96,16 +128,21 @@ export default function MapView() {
       setPanToEvent(evt);
     }
   };
+
   const [viewSelected, setViewSelected] = useState(false);
   const sidebarList = viewSelected ? selectedEvents : filteredEvents;
   const sidebarTitle = viewSelected ? 'Selected Events' : 'Nearby Events';
   const toggleLabel = viewSelected
     ? 'Back to Nearby Events'
     : 'Show Selected Events';
+
   const [mounted, setMounted] = useState(false);
   useEffect(() => void setMounted(true), []);
+
+  // 5. RSVP logic
   const [rsvpLoading, setRsvpLoading] = useState(false);
-  const [hasRSVPd, setHasRSVPd] = useState(false); // New state to track RSVP status
+  const [hasRSVPd, setHasRSVPd] = useState(false);
+
   const handleRSVP = async (evt: EventWithCoords) => {
     if (!isAuthenticated || !user) {
       toast({
@@ -116,7 +153,9 @@ export default function MapView() {
       return;
     }
     setRsvpLoading(true);
+
     try {
+      // Check if already RSVP'd
       const { data: exists } = await supabase
         .from("event_rsvps")
         .select("*")
@@ -131,11 +170,20 @@ export default function MapView() {
         setRsvpLoading(false);
         return;
       }
+
+      // Get event data for max_attendees
       const { data: eventData, error: eventError } = await supabase
         .from("events")
         .select("current_attendees, max_attendees")
         .eq("id", evt.id)
         .single();
+
+      // Get up-to-date attendee count from event_rsvps
+      const { count } = await supabase
+        .from("event_rsvps")
+        .select("*", { count: 'exact', head: true })
+        .eq("event_id", evt.id);
+
       if (eventError || !eventData) {
         toast({
           title: "Error",
@@ -145,7 +193,9 @@ export default function MapView() {
         setRsvpLoading(false);
         return;
       }
-      if (eventData.current_attendees >= eventData.max_attendees) {
+
+      // Prevent RSVP if event is full
+      if (count !== null && eventData.max_attendees !== null && count >= eventData.max_attendees) {
         toast({
           title: "Event Full",
           description: "This event has reached its maximum capacity",
@@ -154,11 +204,14 @@ export default function MapView() {
         setRsvpLoading(false);
         return;
       }
+
+      // Get user's name
       const { data: profile, error: profErr } = await supabase
         .from("profiles")
         .select("first_name,last_name")
         .eq("id", user.id)
         .single();
+
       if (profErr || !profile) {
         toast({
           title: "Error",
@@ -168,6 +221,8 @@ export default function MapView() {
         setRsvpLoading(false);
         return;
       }
+
+      // Insert RSVP row
       const { error: rsvpError } = await supabase
         .from("event_rsvps")
         .insert({
@@ -176,6 +231,7 @@ export default function MapView() {
           attendee_first: profile.first_name,
           attendee_last: profile.last_name,
         });
+
       if (rsvpError) {
         toast({
           title: "Error",
@@ -185,21 +241,16 @@ export default function MapView() {
         setRsvpLoading(false);
         return;
       }
-      const newAttendeeCount = eventData.current_attendees + 1;
-      await supabase
-        .from("events")
-        .update({ current_attendees: newAttendeeCount })
-        .eq("id", evt.id);
+
       toast({
         title: "RSVP Successful",
         description: "You have successfully RSVP'd to this event",
       });
-      setViewEventDetail((detail) =>
-        detail && detail.id === evt.id
-          ? { ...detail, current_attendees: newAttendeeCount }
-          : detail
-      );
       setHasRSVPd(true);
+
+      // Refresh counts everywhere
+      await loadAttendeeCounts();
+
     } catch (error) {
       toast({
         title: "RSVP Failed",
@@ -210,6 +261,8 @@ export default function MapView() {
       setRsvpLoading(false);
     }
   };
+
+  // Check RSVP status for modal button
   useEffect(() => {
     if (viewEventDetail && isAuthenticated && user) {
       const checkRSVPStatus = async () => {
@@ -226,8 +279,10 @@ export default function MapView() {
       setHasRSVPd(false);
     }
   }, [viewEventDetail, isAuthenticated, user]);
+
   const center: [number, number] = [-97.7364, 30.2862];
   const zoom = 14;
+
   return (
     <>
       <div className="p-6 space-y-4">
@@ -288,13 +343,15 @@ export default function MapView() {
               <CalIcon className="mr-2 pointer-events-none" size={20} />
               <span>
                 {dateFilter
-  ? (() => {
-      const [yyyy, mm, dd] = dateFilter.split('-')
-      return `${new Date(+yyyy, +mm - 1, +dd).toLocaleDateString(undefined, {
-        month: 'short', day: 'numeric', year: 'numeric'
-      })}`
-    })()
-  : 'Select date'}
+                  ? (() => {
+                      const [yyyy, mm, dd] = dateFilter.split('-');
+                      return `${new Date(+yyyy, +mm - 1, +dd).toLocaleDateString(undefined, {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}`;
+                    })()
+                  : 'Select date'}
               </span>
             </div>
           </div>
@@ -401,7 +458,7 @@ export default function MapView() {
                         {evt.location}
                       </p>
                       <p className="text-sm text-zinc-500 mt-1">
-                        Attendees: {evt.current_attendees}/{evt.max_attendees}
+                        Attendees: {(attendeeCounts[evt.id] || 0)}/{evt.max_attendees}
                       </p>
                     </div>
                   );
@@ -458,20 +515,20 @@ export default function MapView() {
             </p>
             <p className="mb-1">
               <span className="font-semibold">Attendees:</span>{' '}
-              {viewEventDetail.current_attendees}/{viewEventDetail.max_attendees}
+              {(attendeeCounts[viewEventDetail.id] || 0)}/{viewEventDetail.max_attendees}
             </p>
             <button
               onClick={() => handleRSVP(viewEventDetail)}
               disabled={
                 rsvpLoading ||
-                viewEventDetail.current_attendees >= viewEventDetail.max_attendees ||
+                (attendeeCounts[viewEventDetail.id] || 0) >= viewEventDetail.max_attendees ||
                 hasRSVPd
               }
               className="mt-4 float-right university-button university-button:hover text-white px-4 py-2 rounded-md font-semibold disabled:opacity-50"
             >
               {rsvpLoading
                 ? 'RSVP…'
-                : viewEventDetail.current_attendees >= viewEventDetail.max_attendees
+                : (attendeeCounts[viewEventDetail.id] || 0) >= viewEventDetail.max_attendees
                 ? 'Full'
                 : hasRSVPd
                 ? 'Already RSVP’d'

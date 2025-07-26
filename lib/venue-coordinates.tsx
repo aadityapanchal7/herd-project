@@ -98,7 +98,7 @@ export interface VenueCoords {
     "Flammable Storage Building": { latitude: 30.287167, longitude: -97.737132 },
     "Traffic Kiosk - 214 1/2 W 24th St": { latitude: 30.292272, longitude: -97.742236 },
     "Garrison Hall": { latitude: 30.285770, longitude: -97.739073 },
-    "Gates Dell Complex": { latitude: 30.284800, longitude: -97.737440 },
+    "Gates Dell Complex": { latitude: 30.28633, longitude: -97.73630 },
     "Mary E. Gearing Hall": { latitude: 30.287234, longitude: -97.738027 },
     "Dorothy L. Gebauer Building": { latitude: 30.284653, longitude: -97.738206 },
     "Graduate Housing, Unit A": { latitude: 30.283097, longitude: -97.732803 },
