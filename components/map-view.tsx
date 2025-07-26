@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import dynamic from "next/dynamic";
@@ -20,6 +20,7 @@ const LeafletMap = dynamic(() => import("@/components/leaflet-map"), {
   ssr: false,
 });
 
+
 type EventWithCoords = Event & {
   latitude: number;
   longitude: number;
@@ -28,6 +29,17 @@ type EventWithCoords = Event & {
   current_attendees: number;
 };
 
+// helper to format YYYY-MM-DD in local timezone
+function formatLocalDate(iso: string) {
+  const [year, month, day] = iso.split("-").map(Number);
+  const d = new Date(year, month - 1, day);
+  return d.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
 export default function MapView() {
   const { toast } = useToast();
   const { user, isAuthenticated } = useAuth();
@@ -35,11 +47,9 @@ export default function MapView() {
 
   // derive school key
   let school = "";
-  if (user?.university) {
-    const uni = user.university.toLowerCase();
-    if (uni.includes("texas") && uni.includes("austin")) {
-      school = "ut_austin";
-    }
+  if (user?.university?.toLowerCase().includes("texas") &&
+      user.university.toLowerCase().includes("austin")) {
+    school = "ut_austin";
   }
 
   // 1. merge events with coords
@@ -64,45 +74,62 @@ export default function MapView() {
   );
 
   // 2. attendee counts
-  const [attendeeCounts, setAttendeeCounts] = useState<{
-    [key: number]: number;
-  }>({});
-
+  const [attendeeCounts, setAttendeeCounts] = useState<{ [key: number]: number }>({});
   async function loadAttendeeCounts() {
-    const ids = eventsWithCoordinates.map((e) => e.id);
-    if (!ids.length) return;
-    const { data, error } = await supabase
-      .from("event_rsvps")
-      .select("event_id");
+    const { data, error } = await supabase.from("event_rsvps").select("event_id");
     if (error) return;
     const counts: { [key: number]: number } = {};
-    ids.forEach((id) => (counts[id] = 0));
+    eventsWithCoordinates.forEach((e) => (counts[e.id] = 0));
     (data || []).forEach((row) => {
       counts[row.event_id] = (counts[row.event_id] || 0) + 1;
     });
     setAttendeeCounts(counts);
   }
-
   useEffect(() => {
     loadAttendeeCounts();
   }, [eventsWithCoordinates.length]);
 
-  // 3. filters
+  // 3. load this user’s RSVPd IDs
+  const [rsvpdIds, setRsvpdIds] = useState<number[]>([]);
+  const [rsvpsLoading, setRsvpsLoading] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchRsvps() {
+      setRsvpsLoading(true);
+      try {
+        if (!user) {
+          setRsvpdIds([]);
+          return;
+        }
+        const { data, error } = await supabase
+          .from("event_rsvps")
+          .select("event_id")
+          .eq("user_id", user.id);
+        if (error) throw error;
+        if (!cancelled) {
+          setRsvpdIds(data?.map((r) => r.event_id) || []);
+        }
+      } catch (err) {
+        console.error("Failed to load RSVPs:", err);
+      } finally {
+        if (!cancelled) setRsvpsLoading(false);
+      }
+    }
+    fetchRsvps();
+    return () => { cancelled = true; };
+  }, [user]);
+
+  // 4. filters
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [dateFilter, setDateFilter] = useState("");
-  const dateInputRef = useRef<HTMLInputElement & { showPicker?: () => void }>(
-    null
-  );
+  const dateInputRef = useRef<HTMLInputElement & { showPicker?: () => void }>(null);
   const categories = ["Social", "Academic", "Sports", "Arts"];
 
   const filteredEvents = useMemo(
     () =>
       eventsWithCoordinates.filter((evt) => {
-        if (
-          searchTerm &&
-          !evt.title.toLowerCase().includes(searchTerm.toLowerCase())
-        )
+        if (searchTerm && !evt.title.toLowerCase().includes(searchTerm.toLowerCase()))
           return false;
         if (categoryFilter !== "All" && evt.category !== categoryFilter)
           return false;
@@ -115,11 +142,16 @@ export default function MapView() {
     [eventsWithCoordinates, searchTerm, categoryFilter, dateFilter]
   );
 
-  // 4. selection & modal
+  // remove any they’ve already RSVPd to
+  const visibleEvents = useMemo(
+    () => filteredEvents.filter((evt) => !rsvpdIds.includes(evt.id)),
+    [filteredEvents, rsvpdIds]
+  );
+
+  // 5. selection & modal
   const [selectedEvents, setSelectedEvents] = useState<EventWithCoords[]>([]);
   const [panToEvent, setPanToEvent] = useState<EventWithCoords | null>(null);
-  const [viewEventDetail, setViewEventDetail] =
-    useState<EventWithCoords | null>(null);
+  const [viewEventDetail, setViewEventDetail] = useState<EventWithCoords | null>(null);
 
   const toggleSelect = (evt: EventWithCoords) => {
     setSelectedEvents((prev) =>
@@ -144,26 +176,22 @@ export default function MapView() {
   };
 
   const [viewSelected, setViewSelected] = useState(false);
-  const sidebarList = viewSelected ? selectedEvents : filteredEvents;
+  const sidebarList = viewSelected
+    ? selectedEvents.filter((e) => !rsvpdIds.includes(e.id))
+    : visibleEvents;
   const sidebarTitle = viewSelected ? "Selected Events" : "Nearby Events";
-  const toggleLabel = viewSelected
-    ? "Back to Nearby Events"
-    : "Show Selected Events";
+  const toggleLabel = viewSelected ? "Back to Nearby Events" : "Show Selected Events";
 
   const [mounted, setMounted] = useState(false);
-  useEffect(() => void setMounted(true), []);
+  useEffect(() => { setMounted(true); }, []);
 
-  // 5. RSVP logic
+  // 6. RSVP logic
   const [rsvpLoading, setRsvpLoading] = useState(false);
   const [hasRSVPd, setHasRSVPd] = useState(false);
 
   const handleRSVP = async (evt: EventWithCoords) => {
     if (!isAuthenticated || !user) {
-      toast({
-        title: "Login Required",
-        description: "Please login to RSVP for events",
-        variant: "destructive",
-      });
+      toast({ title: "Login Required", description: "Please login to RSVP", variant: "destructive" });
       return;
     }
     setRsvpLoading(true);
@@ -175,71 +203,39 @@ export default function MapView() {
         .eq("user_id", user.id)
         .single();
       if (exists) {
-        toast({
-          title: "Already RSVP'd",
-          description: "You've already RSVP'd to this event",
-        });
+        toast({ title: "Already RSVP'd" });
         return;
       }
-      const { count } = await supabase
-        .from("event_rsvps")
-        .select("*", { count: "exact", head: true })
-        .eq("event_id", evt.id);
-      const { data: evtData, error: evtErr } = await supabase
-        .from("events")
-        .select("max_attendees")
-        .eq("id", evt.id)
-        .single();
-      if (evtErr || !evtData) throw new Error("Event not found");
-      if (count !== null && count >= evtData.max_attendees) {
-        toast({
-          title: "Event Full",
-          description: "This event has reached its maximum capacity",
-          variant: "destructive",
-        });
-        return;
-      }
-      const { data: prof, error: profErr } = await supabase
+      const { data: prof } = await supabase
         .from("profiles")
         .select("first_name,last_name")
         .eq("id", user.id)
         .single();
-      if (profErr || !prof) throw new Error("Profile fetch error");
       await supabase.from("event_rsvps").insert({
         event_id: evt.id,
         user_id: user.id,
-        attendee_first: prof.first_name,
-        attendee_last: prof.last_name,
+        attendee_first: prof!.first_name,
+        attendee_last: prof!.last_name,
       });
-      toast({
-        title: "RSVP Successful",
-        description: "You have successfully RSVP'd to this event",
-      });
-      setHasRSVPd(true);
+      toast({ title: "RSVP Successful" });
+      setRsvpdIds((prev) => [...prev, evt.id]);
       await loadAttendeeCounts();
-    } catch (err) {
-      toast({
-        title: "RSVP Failed",
-        description: "An unexpected error occurred",
-        variant: "destructive",
-      });
+    } catch {
+      toast({ title: "RSVP Failed", description: "An unexpected error occurred", variant: "destructive" });
     } finally {
       setRsvpLoading(false);
     }
   };
 
-  // keep modal button in sync
   useEffect(() => {
     if (viewEventDetail && isAuthenticated && user) {
-      (async () => {
-        const { data: ex } = await supabase
-          .from("event_rsvps")
-          .select("*")
-          .eq("event_id", viewEventDetail.id)
-          .eq("user_id", user.id)
-          .single();
-        setHasRSVPd(!!ex);
-      })();
+      supabase
+        .from("event_rsvps")
+        .select("*")
+        .eq("event_id", viewEventDetail.id)
+        .eq("user_id", user.id)
+        .single()
+        .then(({ data }) => setHasRSVPd(!!data));
     } else {
       setHasRSVPd(false);
     }
@@ -247,141 +243,106 @@ export default function MapView() {
 
   // map center
   const center: [number, number] =
-    (MAP_CENTERS[school] as [number, number]) ??
-    (MAP_CENTERS["ut_austin"] as [number, number]);
+    (MAP_CENTERS[school] as [number, number]) ?? (MAP_CENTERS["ut_austin"] as [number, number]);
   const zoom = 14;
 
   return (
     <>
-      <div className="p-6 space-y-4">
-        {/* Info bar */}
-        <div className="bg-white shadow-md rounded-lg p-4">
-          <h1 className="text-xl font-bold university-primary-text">
-            { /* dynamic campus name */ }
-            {user?.university || "Campus"} Map
-          </h1>
-          <p className="text-gray-700">
-            Explore events happening around your campus.
-          </p>
-        </div>
+    
+      {/* Info bar */}
+      <div className="bg-white shadow-md rounded-lg p-4 mb-4">
+        <h1 className="text-xl font-bold university-primary-text">
+          {user?.university || "Campus"} Map
+        </h1>
+        <p className="text-gray-700">
+  Explore events happening around your campus. Click on a marker or click &quot;add&quot; to select an event.
+</p>
+      </div>
 
-        {/* Filters */}
-        <div className="university-primary-bg rounded-2xl p-4 flex flex-col md:flex-row items-center gap-4">
-          {/* Search */}
-          <div className="relative flex-1">
-            <SearchIcon
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-white"
-              size={20}
-            />
-            <input
-              type="text"
-              placeholder="Search for events…"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="
-                w-full pl-10 pr-4 py-2
-                bg-white rounded-lg
-                text-university-primary-text
-                placeholder-university-primary-text
-                focus:ring-2 focus:ring-white
-              "
-            />
-          </div>
-          {/* Category */}
-          <div className="relative">
-            <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              className="
-                appearance-none pl-4 pr-10 py-2
-                bg-white rounded-lg
-                text-university-primary-text
-                focus:ring-2 focus:ring-white
-              "
-            >
-              <option value="All">All Categories</option>
-              {categories.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
-            <FilterIcon
-              className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-university-primary-text"
-              size={20}
-            />
-          </div>
-          {/* Date */}
-          <div
-            className="relative w-full md:w-auto cursor-pointer"
-            onClick={() => dateInputRef.current?.showPicker?.()}
+      {/* Filters */}
+      <div className="university-primary-bg text-university-primary-text rounded-2xl p-4 flex flex-col md:flex-row items-center gap-4 mb-4">
+        {/* Search */}
+        <div className="relative flex-1">
+          <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-current" size={20} />
+          <input
+            type="text"
+            placeholder="Search for events…"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 bg-white rounded-lg text-current placeholder-current focus:ring-2 focus:ring-current"
+          />
+        </div>
+        {/* Category */}
+        <div className="relative">
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="appearance-none pl-4 pr-10 py-2 bg-white rounded-lg text-current focus:ring-2 focus:ring-current"
           >
-            <input
-              ref={dateInputRef}
-              type="date"
-              value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value)}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-            />
-            <div className="
-                flex items-center pl-4 pr-10 py-2
-                bg-white rounded-lg
-                text-university-primary-text
-              ">
-              <CalIcon className="mr-2 pointer-events-none text-university-primary-text" size={20} />
-              <span>
-                {dateFilter
-                  ? new Date(dateFilter).toLocaleDateString(undefined, {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })
-                  : "Select date"}
-              </span>
-            </div>
+            <option value="All">All Categories</option>
+            {categories.map((cat) => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
+          <FilterIcon className="absolute right-3 top-1/2 -translate-y-1/2 text-current" size={20} />
+        </div>
+        {/* Date */}
+        <div className="relative w-full md:w-auto cursor-pointer" onClick={() => dateInputRef.current?.showPicker?.()}>
+          <input
+            ref={dateInputRef}
+            type="date"
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+          />
+          <div className="flex items-center pl-4 pr-10 py-2 bg-white rounded-lg text-current">
+            <CalIcon className="mr-2 text-current" size={20} />
+            <span className="text-current">
+              {dateFilter ? formatLocalDate(dateFilter) : "Select date"}
+            </span>
           </div>
         </div>
+      </div>
 
-        {/* Map & Sidebar */}
-        <div className="flex flex-col md:flex-row gap-4 h-[calc(100vh-370px)]">
-          {/* Map */}
-          <div className="w-full md:w-2/3 h-full rounded-lg overflow-hidden shadow-md">
-            {mounted && (
-              <LeafletMap
-                center={center}
-                zoom={zoom}
-                events={filteredEvents}
-                selectedEvents={selectedEvents}
-                selectedEvent={panToEvent ?? undefined}
-                onEventSelect={handleMarkerClick}
-              />
-            )}
+      {/* Map & Sidebar */}
+      <div className="flex flex-col md:flex-row gap-4 h-[calc(100vh-370px)]">
+        {/* Map */}
+        <div className="w-full md:w-2/3 h-full rounded-lg overflow-hidden shadow-md">
+          {mounted && !rsvpsLoading ? (
+            <LeafletMap
+              center={center}
+              zoom={zoom}
+              events={visibleEvents}
+              selectedEvents={selectedEvents.filter((e) => !rsvpdIds.includes(e.id))}
+              selectedEvent={panToEvent || undefined}
+              onEventSelect={handleMarkerClick}
+            />
+          ) : (
+            <div className="h-full flex items-center justify-center">Loading events…</div>
+          )}
+        </div>
+
+        {/* Sidebar */}
+        <aside className="w-full md:w-1/3 overflow-y-auto bg-white border border-zinc-200 p-4 shadow-md rounded-lg">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-bold text-zinc-800">{sidebarTitle}</h2>
+            <button
+              onClick={() => setViewSelected((v) => !v)}
+              className="university-button text-white px-4 py-2 rounded-md"
+            >
+              {toggleLabel}
+            </button>
           </div>
-          {/* Sidebar */}
-          <aside className="w-full md:w-1/3 overflow-y-auto bg-white border border-zinc-200 p-4 shadow-md rounded-lg">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-bold text-zinc-800">
-                {sidebarTitle}
-              </h2>
-              <button
-                onClick={() => setViewSelected((v) => !v)}
-                className="university-button university-button:hover text-white font-semibold px-4 py-2 rounded-md"
-              >
-                {toggleLabel}
-              </button>
-            </div>
 
-            {sidebarList.length === 0 ? (
+          {!rsvpsLoading ? (
+            sidebarList.length === 0 ? (
               <p className="text-gray-500">
-                {viewSelected
-                  ? "You haven’t selected any events yet."
-                  : "No nearby events"}
+                {viewSelected ? 'You haven’t selected any events yet. Click on a marker or click "add" to select an event.' : "No nearby events"}
               </p>
             ) : (
               sidebarList.map((evt) => {
                 const isSel = selectedEvents.some((e) => e.id === evt.id);
-                // dynamic badge colors
-                const badgeMap: Record<string, string> = {
+                const badgeMap: Record<string,string> = {
                   Social:   "bg-purple-100 text-purple-800",
                   Academic: "bg-green-100 text-green-800",
                   Sports:   "bg-red-100 text-red-700",
@@ -402,12 +363,10 @@ export default function MapView() {
                           toggleSelect(evt);
                         }}
                         className={`absolute top-2 right-2 text-white text-xs font-semibold px-2 py-1 rounded ${
-                          isSel
-                            ? "bg-red-500 hover:bg-red-600"
-                            : "university-button university-button:hover"
+                          isSel ? "bg-red-500 hover:bg-red-600" : "university-button"
                         }`}
                       >
-                        {isSel ? "Remove Event" : "Add Event"}
+                        {isSel ? "Remove" : "Add"}
                       </button>
                     ) : (
                       <button
@@ -417,7 +376,7 @@ export default function MapView() {
                         }}
                         className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold px-2 py-1 rounded"
                       >
-                        Remove Event
+                        Remove
                       </button>
                     )}
 
@@ -427,9 +386,9 @@ export default function MapView() {
                           e.stopPropagation();
                           setViewEventDetail(evt);
                         }}
-                        className="absolute bottom-2 right-2 university-button university-button:hover text-white text-xs font-semibold px-2 py-1 rounded"
+                        className="absolute bottom-2 right-2 university-button text-white text-xs font-semibold px-2 py-1 rounded"
                       >
-                        View Event
+                        View
                       </button>
                     )}
 
@@ -440,12 +399,10 @@ export default function MapView() {
                       {evt.title}
                     </h3>
                     <p className="text-sm text-zinc-500 mb-1 flex items-center">
-                      <CalIcon className="inline w-4 h-4 mr-1 university-primary-text" />
-                      {evt.date} at {evt.time}
+                      <CalIcon className="inline w-4 h-4 mr-1 university-primary-text" /> {evt.date} at {evt.time}
                     </p>
                     <p className="text-sm text-zinc-500 flex items-center">
-                      <MapPin className="inline w-4 h-4 mr-1 university-primary-text" />
-                      {evt.location}
+                      <MapPin className="inline w-4 h-4 mr-1 university-primary-text" /> {evt.location}
                     </p>
                     <p className="text-sm text-zinc-500 mt-1">
                       Attendees: {(attendeeCounts[evt.id] || 0)}/{evt.max_attendees}
@@ -453,18 +410,20 @@ export default function MapView() {
                   </div>
                 );
               })
-            )}
+            )
+          ) : (
+            <p className="text-center py-4">Loading events…</p>
+          )}
 
-            {viewSelected && selectedEvents.length > 0 && (
-              <button
-                onClick={() => setSelectedEvents([])}
-                className="w-full mt-2 bg-red-500 hover:bg-red-600 text-white font-semibold px-4 py-2 rounded-md"
-              >
-                Clear All Events
-              </button>
-            )}
-          </aside>
-        </div>
+          {viewSelected && selectedEvents.length > 0 && (
+            <button
+              onClick={() => setSelectedEvents([])}
+              className="w-full mt-2 bg-red-500 hover:bg-red-600 text-white font-semibold px-4 py-2 rounded-md"
+            >
+              Clear All
+            </button>
+          )}
+        </aside>
       </div>
 
       {/* Detail Modal */}
@@ -477,49 +436,35 @@ export default function MapView() {
             >
               <XIcon size={20} />
             </button>
-
             <h2 className="text-2xl font-bold mb-2">{viewEventDetail.title}</h2>
             <p className="mb-1">
-              <span className="font-semibold">Category:</span>{" "}
-              {viewEventDetail.category}
+              <span className="font-semibold">Category:</span> {viewEventDetail.category}
             </p>
-            <p className="mb-2 text-sm text-gray-600">
-              {viewEventDetail.description}
-            </p>
-
+            <p className="mb-2 text-sm text-gray-600">{viewEventDetail.description}</p>
             <p className="mb-1 flex items-center">
-              <CalIcon className="inline w-4 h-4 mr-1 university-primary-text" />
-              {viewEventDetail.date} at {viewEventDetail.time}
+              <CalIcon className="inline w-4 h-4 mr-1 university-primary-text" /> {viewEventDetail.date} at {viewEventDetail.time}
             </p>
             <p className="mb-1 flex items-center">
-              <MapPin className="inline w-4 h-4 mr-1 university-primary-text" />
-              {viewEventDetail.location}
-            </p>
-
-            <p className="mb-1">
-              <span className="font-semibold">Hosted by:</span>{" "}
-              {viewEventDetail.creator_name}
+              <MapPin className="inline w-4 h-4 mr-1 university-primary-text" /> {viewEventDetail.location}
             </p>
             <p className="mb-1">
-              <span className="font-semibold">Attendees:</span>{" "}
-              {(attendeeCounts[viewEventDetail.id] || 0)}/
-              {viewEventDetail.max_attendees}
+              <span className="font-semibold">Hosted by:</span> {viewEventDetail.creator_name}
             </p>
-
+            <p className="mb-1">
+              <span className="font-semibold">Attendees:</span> {(attendeeCounts[viewEventDetail.id] || 0)}/{viewEventDetail.max_attendees}
+            </p>
             <button
               onClick={() => handleRSVP(viewEventDetail)}
               disabled={
                 rsvpLoading ||
-                (attendeeCounts[viewEventDetail.id] || 0) >=
-                  viewEventDetail.max_attendees ||
+                (attendeeCounts[viewEventDetail.id] || 0) >= viewEventDetail.max_attendees ||
                 hasRSVPd
               }
-              className="mt-4 float-right university-button university-button:hover text-white px-4 py-2 rounded-md font-semibold disabled:opacity-50"
+              className="mt-4 float-right university-button text-white px-4 py-2 rounded-md font-semibold disabled:opacity-50"
             >
               {rsvpLoading
                 ? "RSVP…"
-                : (attendeeCounts[viewEventDetail.id] || 0) >=
-                  viewEventDetail.max_attendees
+                : (attendeeCounts[viewEventDetail.id] || 0) >= viewEventDetail.max_attendees
                 ? "Full"
                 : hasRSVPd
                 ? "Already RSVP’d"

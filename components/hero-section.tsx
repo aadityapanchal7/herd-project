@@ -99,7 +99,7 @@ export function HeroSection() {
                 <div ref={categoryRef} className="relative inline-block text-left">
                   <Button
                     variant="outline"
-                    className="flex items-center gap-2 h-12 px-4 border rounded-lg"
+                    className="flex items-center gap-2 h-12 px-4 border rounded-lg hover:border-[#8a70d6] hover:text-[#8a70d6]"
                     onClick={() => setCategoryOpen((o) => !o)}
                   >
                     <Filter className="h-4 w-4" />
@@ -117,7 +117,7 @@ export function HeroSection() {
                           }}
                           className={`px-4 py-2 text-sm cursor-pointer hover:bg-gray-100 ${
                             cat === selectedCategory
-                              ? "font-semibold university-primary-text"
+                              ? "font-semibold text-[#8a70d6]"
                               : "text-gray-700"
                           }`}
                         >
@@ -132,7 +132,7 @@ export function HeroSection() {
                 <div className="relative inline-block">
                   <Button
                     variant="outline"
-                    className="flex items-center gap-2 h-12 px-4 border rounded-lg relative z-10"
+                    className="flex items-center gap-2 h-12 px-4 border rounded-lg hover:border-[#8a70d6] hover:text-[#8a70d6] relative z-10"
                     onClick={() => {
                       const el = dateInputRef.current;
                       if (!el) return;
