@@ -286,22 +286,42 @@ export default function MapView() {
           </select>
           <FilterIcon className="absolute right-3 top-1/2 -translate-y-1/2 text-current" size={20} />
         </div>
+
         {/* Date */}
-        <div className="relative w-full md:w-auto cursor-pointer" onClick={() => dateInputRef.current?.showPicker?.()}>
-          <input
-            ref={dateInputRef}
-            type="date"
-            value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value)}
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-          />
-          <div className="flex items-center pl-4 pr-10 py-2 bg-white rounded-lg text-current">
-            <CalIcon className="mr-2 text-current" size={20} />
-            <span className="text-current">
-              {dateFilter ? formatLocalDate(dateFilter) : "Select date"}
-            </span>
-          </div>
-        </div>
+        <div
+  className="relative w-full md:w-auto cursor-pointer"
+  onClick={() => dateInputRef.current?.showPicker?.()}
+>
+  <input
+    ref={dateInputRef}
+    type="date"
+    value={dateFilter}
+    onChange={(e) => setDateFilter(e.target.value)}
+    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+    style={{ pointerEvents: "none" }} // allow clicks to pass through
+    tabIndex={-1} // not focusable by tab, but still accessible via showPicker
+  />
+  <div className="flex items-center pl-4 pr-10 py-2 bg-white rounded-lg text-current select-none">
+    <CalIcon className="mr-2 text-current" size={20} />
+    <span className="text-current">
+      {dateFilter ? formatLocalDate(dateFilter) : "Select date"}
+    </span>
+  </div>
+  {dateFilter && (
+    <button
+      type="button"
+      onClick={e => {
+        e.stopPropagation();
+        setDateFilter("");
+      }}
+      className="absolute right-3 top-1/2 -translate-y-1/2 text-lg text-gray-400 z-20"
+      aria-label="Clear date"
+    >
+      ×
+    </button>
+  )}
+</div>
+
       </div>
 
       {/* Map & Sidebar */}
