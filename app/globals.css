@@ -140,13 +140,13 @@
 
 /* Hover state: universal orange + scale */
 .custom-marker:hover .marker-inner {
-  background-color: #BF5700 !important;
+  background-color: var(--primary-color) !important;
   transform: scale(1.25);
 }
 
 /* Permanent “selected” state: same as hover */
 .custom-marker.marker-selected .marker-inner {
-  background-color: #BF5700 !important;
+  background-color: var(--primary-color) !important;
   transform: scale(1.25);
 }
 

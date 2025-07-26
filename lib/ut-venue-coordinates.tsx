@@ -3,7 +3,10 @@ export interface VenueCoords {
     longitude: number;
   }
   
-  export const VENUE_COORDS: Record<string, VenueCoords> = {
+  export const VENUE_COORDS: Record<
+  string, // school name
+  Record<string, VenueCoords> >= {
+    ut_austin: {
     "Almetris Duren Residence Hall": { latitude: 30.289651, longitude: -97.733222 },
     "Athletic Fields Pavilion (Rehab)": { latitude: 30.299270, longitude: -97.719300 },
     "Athletic Fields Pavilion (Eastside)": { latitude: 30.299211, longitude: -97.718505 },
@@ -227,5 +230,9 @@ export interface VenueCoords {
     "F.L. Winship Drama Bldg.": { latitude: 30.285534, longitude: -97.738267 },
     "West Mall Office Bldg.": { latitude: 30.288630, longitude: -97.739748 },
     "Walter Webb Hall": { latitude: 30.286576, longitude: -97.739615 }
-  };
+  }
+};
   
+export const MAP_CENTERS: Record<string, [number, number]> = {
+  ut_austin: [-97.7364, 30.2862]
+};
