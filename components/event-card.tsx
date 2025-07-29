@@ -199,13 +199,15 @@ export function EventCard({ event, allowRemoveRSVP, onRemoveRSVP }: EventCardPro
           <Users className="w-4 h-4 mr-2 text-orange-700" />
           <span className="text-base">{attendeeCount} / {max_attendees} attendees</span>
           <button
-            type="button"
-            className="ml-2 px-3 py-1 rounded-md border border-orange-700 text-orange-700 font-bold bg-white text-base transition hover:bg-orange-50 focus:outline-none"
-            onClick={() => setShowAttendeeList(true)}
-            title="View attendees"
-          >
-            View
-          </button>
+  type="button"
+  className="ml-2 px-3 py-1 rounded-md border font-bold bg-white text-base transition focus:outline-none
+    text-[var(--primary-color)] border-[var(--primary-color)] hover:bg-[var(--primary-color)] hover:text-white"
+  onClick={() => setShowAttendeeList(true)}
+  title="View attendees"
+>
+  View
+</button>
+
         </div>
       </div>
 
