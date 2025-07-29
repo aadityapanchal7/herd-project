@@ -187,16 +187,16 @@ export function EventCard({ event, allowRemoveRSVP, onRemoveRSVP }: EventCardPro
       <p className="text-gray-600 mb-4">{description}</p>
 
       <div className="space-y-2 mb-4">
-        <div className="flex items-center text-gray-500">
-          <CalendarIcon className="w-4 h-4 mr-2 university-primary-text" />
+      <div className="flex items-center text-gray-500">
+          <CalendarIcon className="w-4 h-4 mr-2" style={{ color: "var(--primary-color)" }} />
           <span>{date} • {time}</span>
         </div>
         <div className="flex items-center text-gray-500">
-          <MapPin className="w-4 h-4 mr-2 university-primary-text" />
+          <MapPin className="w-4 h-4 mr-2" style={{ color: "var(--primary-color)" }} />
           <span>{location}</span>
         </div>
         <div className="flex items-center text-gray-500">
-          <Users className="w-4 h-4 mr-2 text-orange-700" />
+          <Users className="w-4 h-4 mr-2" style={{ color: "var(--primary-color)" }} />
           <span className="text-base">{attendeeCount} / {max_attendees} attendees</span>
           <button
   type="button"
@@ -216,7 +216,7 @@ export function EventCard({ event, allowRemoveRSVP, onRemoveRSVP }: EventCardPro
         {allowRemoveRSVP && onRemoveRSVP ? (
           <Button
             variant="outline"
-            className="border-orange-700 text-orange-700 font-semibold mt-4"
+            className="border-red-700 text-red-700 hover:bg-red-500 font-semibold mt-4"
             onClick={onRemoveRSVP}
           >
             Remove RSVP
