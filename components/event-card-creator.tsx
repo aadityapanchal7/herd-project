@@ -21,27 +21,22 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
-interface EventCardProps {
+interface EventCardCreatorProps {
   event: Event
+  onEventDeleted?: (eventId: number) => void
 }
 
-export function EventCard({ event }: EventCardProps) {
-  const { title, category, description, date, time, location, max_attendees, id, creator_name, verified, created_by } = event
+export function EventCardCreator({ event, onEventDeleted }: EventCardCreatorProps) {
+  const { title, category, description, date, time, location, max_attendees, id, creator_name, verified } = event
   const { isAuthenticated, user } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
-  const [isRsvping, setIsRsvping] = useState(false)
   const [attendeeCount, setAttendeeCount] = useState<number>(0)
-  const [hasRSVPd, setHasRSVPd] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
-  // Check if current user is the creator of this event
-  const isCreator = user?.id === created_by
-
-  // Fetch RSVP count & RSVP status for this event
+  // Fetch RSVP count for this event
   useEffect(() => {
     const fetchAttendees = async () => {
-      // Get number of RSVPs for this event
       const { count } = await supabase
         .from("event_rsvps")
         .select("*", { count: "exact", head: true })
@@ -49,25 +44,7 @@ export function EventCard({ event }: EventCardProps) {
       setAttendeeCount(count || 0)
     }
     fetchAttendees()
-  }, [id, isRsvping])
-
-  useEffect(() => {
-    // Check if user has RSVP'd
-    const checkRSVP = async () => {
-      if (isAuthenticated && user) {
-        const { data } = await supabase
-          .from("event_rsvps")
-          .select("*")
-          .eq("event_id", id)
-          .eq("user_id", user.id)
-          .single()
-        setHasRSVPd(!!data)
-      } else {
-        setHasRSVPd(false)
-      }
-    }
-    checkRSVP()
-  }, [isAuthenticated, user, id, isRsvping])
+  }, [id])
 
   const getCategoryColor = (category: string) => {
     switch (category) {
@@ -81,64 +58,6 @@ export function EventCard({ event }: EventCardProps) {
         return "bg-pink-100 text-pink-800"
       default:
         return "bg-gray-100 text-gray-800"
-    }
-  }
-
-  const handleRSVP = async () => {
-    if (!isAuthenticated || !user) {
-      toast({
-        title: "Login Required",
-        description: "Please login to RSVP for events",
-        variant: "destructive",
-      })
-      return
-    }
-    if (hasRSVPd) {
-      toast({
-        title: "Already RSVP'd",
-        description: "You've already RSVP'd to this event",
-      })
-      return
-    }
-    if (attendeeCount >= max_attendees) {
-      toast({
-        title: "Event Full",
-        description: "This event has reached its maximum capacity",
-        variant: "destructive",
-      })
-      return
-    }
-
-    setIsRsvping(true)
-
-    try {
-      // Insert RSVP
-      const { error } = await supabase.from("event_rsvps").insert({
-        event_id: id,
-        user_id: user.id,
-      })
-      if (error) {
-        toast({
-          title: "Error",
-          description: error.message,
-          variant: "destructive",
-        })
-        setIsRsvping(false)
-        return
-      }
-      toast({
-        title: "RSVP Successful",
-        description: "You have successfully RSVP'd to this event",
-      })
-      setHasRSVPd(true)
-    } catch (error) {
-      toast({
-        title: "RSVP Failed",
-        description: "An unexpected error occurred",
-        variant: "destructive",
-      })
-    } finally {
-      setIsRsvping(false)
     }
   }
 
@@ -164,8 +83,10 @@ export function EventCard({ event }: EventCardProps) {
         description: "Your event has been successfully deleted.",
       })
 
-      // Reload the page to refresh the events list
-      window.location.reload()
+      // Call the callback to update the parent component
+      if (onEventDeleted) {
+        onEventDeleted(id)
+      }
     } catch (error: any) {
       toast({
         title: "Error",
@@ -201,48 +122,46 @@ export function EventCard({ event }: EventCardProps) {
               Verified Host
             </div>
           )}
-          {isCreator && (
-            <div className="flex gap-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleEdit}
-                className="h-8 w-8 p-0 text-gray-600 hover:text-blue-600"
-              >
-                <Edit className="h-4 w-4" />
-              </Button>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0 text-gray-600 hover:text-red-600"
+          <div className="flex gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleEdit}
+              className="h-8 w-8 p-0 text-gray-600 hover:text-blue-600"
+            >
+              <Edit className="h-4 w-4" />
+            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 text-gray-600 hover:text-red-600"
+                  disabled={isDeleting}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Event</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to delete "{title}"? This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDelete}
+                    className="bg-red-600 hover:bg-red-700"
                     disabled={isDeleting}
                   >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete Event</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Are you sure you want to delete "{title}"? This action cannot be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleDelete}
-                      className="bg-red-600 hover:bg-red-700"
-                      disabled={isDeleting}
-                    >
-                      {isDeleting ? "Deleting..." : "Delete"}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
-          )}
+                    {isDeleting ? "Deleting..." : "Delete"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </div>
       </div>
       <h3 className="text-xl font-bold mb-2">{title}</h3>
@@ -271,24 +190,49 @@ export function EventCard({ event }: EventCardProps) {
         </div>
       </div>
       <div className="flex justify-end items-center">
-        <Button
-          className={
-            hasRSVPd
-              ? "bg-green-600 hover:bg-green-700"
-              : "university-button"
-          }
-          onClick={handleRSVP}
-          disabled={hasRSVPd || attendeeCount >= max_attendees || isRsvping}
-        >
-          {isRsvping
-            ? "Processing..."
-            : attendeeCount >= max_attendees
-            ? "Full"
-            : hasRSVPd
-            ? "RSVP'd"
-            : "RSVP"}
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleEdit}
+            className="flex items-center gap-2"
+          >
+            <Edit className="h-4 w-4" />
+            Edit
+          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2 text-red-600 border-red-200 hover:bg-red-50"
+                disabled={isDeleting}
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Event</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete "{title}"? This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDelete}
+                  className="bg-red-600 hover:bg-red-700"
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? "Deleting..." : "Delete"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
       </div>
     </div>
   )
-}
+} 
