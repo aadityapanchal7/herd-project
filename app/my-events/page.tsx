@@ -52,9 +52,7 @@ export default function MyEventsPage() {
           .select("event_id")
           .eq("user_id", user.id)
 
-        if (rsvpError) {
-          throw rsvpError
-        }
+        if (rsvpError) throw rsvpError
 
         const eventIds = rsvpData.map((rsvp) => rsvp.event_id)
 
@@ -72,9 +70,7 @@ export default function MyEventsPage() {
           .in("id", eventIds)
           .order("date", { ascending: true })
 
-        if (eventError) {
-          throw eventError
-        }
+        if (eventError) throw eventError
 
         setRsvpedEvents(eventData || [])
         setFilteredEvents(eventData || [])
@@ -137,6 +133,30 @@ export default function MyEventsPage() {
   const now = new Date()
   const upcomingEvents = filteredEvents.filter((event) => new Date(event.date) >= now)
   const pastEvents = filteredEvents.filter((event) => new Date(event.date) < now)
+
+  // --- Remove RSVP Handler ---
+  async function handleRemoveRSVP(eventId: number) {
+    if (!user) return
+    const { error } = await supabase
+      .from("event_rsvps")
+      .delete()
+      .eq("user_id", user.id)
+      .eq("event_id", eventId)
+    if (!error) {
+      setRsvpedEvents((prev) => prev.filter((e) => e.id !== eventId))
+      setFilteredEvents((prev) => prev.filter((e) => e.id !== eventId))
+      toast({
+        title: "RSVP Removed",
+        description: "Your RSVP was successfully removed.",
+      })
+    } else {
+      toast({
+        title: "Error",
+        description: "Failed to remove RSVP.",
+        variant: "destructive",
+      })
+    }
+  }
 
   if (authLoading || loadingEvents) {
     return (
@@ -209,7 +229,7 @@ export default function MyEventsPage() {
                 </TabsTrigger>
                 <TabsTrigger value="past" className="flex gap-2 items-center">
                   <Calendar className="h-4 w-4" />
-                  Past ({pastEvents.length})
+                  Event History ({pastEvents.length})
                 </TabsTrigger>
               </TabsList>
 
@@ -229,7 +249,11 @@ export default function MyEventsPage() {
                           transition={{ duration: 0.5, ease: "easeOut", delay: idx * 0.05 }}
                           layout
                         >
-                          <EventCard event={event} />
+                          <EventCard
+                            event={event}
+                            allowRemoveRSVP
+                            onRemoveRSVP={() => handleRemoveRSVP(event.id)}
+                          />
                         </motion.div>
                       ))}
                     </motion.div>
@@ -262,6 +286,7 @@ export default function MyEventsPage() {
                           transition={{ duration: 0.5, ease: "easeOut", delay: idx * 0.05 }}
                           layout
                         >
+                          {/* NO remove rsvp for past */}
                           <EventCard event={event} />
                         </motion.div>
                       ))}

@@ -4,12 +4,13 @@ import React, { useState, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { MapPin, X as XIcon, Calendar as CalIcon, Users } from "lucide-react";
 import { useEvents } from "@/context/events-context";
-import { MAP_CENTERS, VENUE_COORDS } from "@/lib/school-coords";
+import { MAP_CENTERS, VENUE_COORDS } from "@/lib/school-cords";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/auth-context";
 import { useToast } from "@/components/ui/use-toast";
 import type { Event } from "@/lib/types";
 
+// Dynamically import your map component
 const LeafletMap = dynamic(() => import("@/components/leaflet-map"), {
   ssr: false,
 });
@@ -67,6 +68,7 @@ export default function MapView({ schoolKey }: { schoolKey?: string }) {
   }
   useEffect(() => {
     loadAttendeeCounts();
+    // eslint-disable-next-line
   }, [eventsWithCoordinates.length]);
 
   // This user’s RSVPd IDs
@@ -148,10 +150,18 @@ export default function MapView({ schoolKey }: { schoolKey?: string }) {
   const [rsvpLoading, setRsvpLoading] = useState(false);
   const [hasRSVPdDetail, setHasRSVPdDetail] = useState(false);
 
-  // For attendee modal
+  // For attendee modal in detail
   const [showAttendeeList, setShowAttendeeList] = useState(false);
   const [attendees, setAttendees] = useState<Attendee[]>([]);
   const [loadingAttendees, setLoadingAttendees] = useState(false);
+  // Search state for attendee modal
+  const [attendeeSearch, setAttendeeSearch] = useState("");
+  const filteredAttendees = attendees.filter(
+    a =>
+      (a.attendee_first + " " + a.attendee_last)
+        .toLowerCase()
+        .includes(attendeeSearch.toLowerCase())
+  );
 
   async function handleRSVP(evt: EventWithCoords) {
     if (!isAuthenticated || !user) {
@@ -195,7 +205,7 @@ export default function MapView({ schoolKey }: { schoolKey?: string }) {
           user_id:             user.id,
           attendee_first:      prof.first_name,
           attendee_last:       prof.last_name,
-          attendee_avatar_url: prof.avatar_url,  // if you added this column
+          attendee_avatar_url: prof.avatar_url,
         });
 
       if (insErr) throw insErr;
@@ -334,9 +344,10 @@ export default function MapView({ schoolKey }: { schoolKey?: string }) {
                     <MapPin className="w-4 h-4 mr-1 university-primary-text" />
                     {evt.location}
                   </p>
-                  <p className="text-sm text-zinc-500 mt-1">
-                    Attendees: {attendeeCounts[evt.id] || 0}/{evt.max_attendees}
-                  </p>
+                  <div className="flex items-center text-gray-500 mt-1">
+                    <Users className="w-4 h-4 mr-2 university-primary" />
+                    <span className="text-base">{attendeeCounts[evt.id] || 0} / {evt.max_attendees} attendees</span>
+                  </div>
                 </div>
               );
             })
@@ -371,9 +382,9 @@ export default function MapView({ schoolKey }: { schoolKey?: string }) {
               <strong>Hosted by:</strong> {viewEventDetail.creator_name}
             </p>
             {/* --- Attendees Row --- */}
-            <div className="flex items-center gap-2 mt-4">
-              <Users className="w-6 h-6 text-orange-700" />
-              <span className="text-lg text-gray-600 font-normal">
+            <div className="flex items-center gap-2 mt-1">
+              <Users className="w-5 h-5 text-orange-700" />
+              <span className="text-base text-gray-600 font-normal">
                 {attendeeCounts[viewEventDetail.id] || 0} / {viewEventDetail.max_attendees} attendees
               </span>
               <button
@@ -381,6 +392,7 @@ export default function MapView({ schoolKey }: { schoolKey?: string }) {
                 onClick={async () => {
                   setShowAttendeeList(true);
                   setLoadingAttendees(true);
+                  setAttendeeSearch("");
                   const { data } = await supabase
                     .from("event_rsvps")
                     .select("attendee_first, attendee_last, attendee_avatar_url")
@@ -418,7 +430,7 @@ export default function MapView({ schoolKey }: { schoolKey?: string }) {
               >
                 <div
                   className="bg-white rounded-lg p-6 max-w-xs w-full shadow-lg"
-                  onClick={(e) => e.stopPropagation()}
+                  onClick={e => e.stopPropagation()}
                 >
                   <div className="flex justify-between items-center mb-3">
                     <h4 className="font-semibold text-lg">Attendees</h4>
@@ -429,13 +441,20 @@ export default function MapView({ schoolKey }: { schoolKey?: string }) {
                       &times;
                     </button>
                   </div>
+                  <input
+                    type="text"
+                    className="w-full mb-3 px-3 py-2 border rounded-md focus:outline-none focus:ring"
+                    placeholder="Search by name…"
+                    value={attendeeSearch}
+                    onChange={e => setAttendeeSearch(e.target.value)}
+                  />
                   {loadingAttendees ? (
                     <div>Loading…</div>
-                  ) : attendees.length === 0 ? (
+                  ) : filteredAttendees.length === 0 ? (
                     <div className="text-gray-500 text-sm">No one has RSVP'd yet.</div>
                   ) : (
                     <ul className="space-y-3 max-h-64 overflow-y-auto">
-                      {attendees.map((a, idx) => (
+                      {filteredAttendees.map((a, idx) => (
                         <li key={idx} className="flex items-center gap-3">
                           <img
                             src={a.attendee_avatar_url || "/default-avatar.png"}

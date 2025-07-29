@@ -99,7 +99,7 @@ export function Header() {
                 <DropdownMenuItem>
                   <Link href="/my-events" className="flex w-full items-center">
                     <CalendarCheck className="mr-2 h-4 w-4" />
-                    My Events
+                    Manage My Events
                   </Link>
                 </DropdownMenuItem>
 

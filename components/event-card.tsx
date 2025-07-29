@@ -1,16 +1,18 @@
-"use client";
+"use client"
 
-import { useState, useEffect } from "react"
-import { CalendarIcon, MapPin, Users } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { useAuth } from "@/context/auth-context"
-import { useToast } from "@/components/ui/use-toast"
-import type { Event } from "@/lib/types"
-import { supabase } from "@/lib/supabase"
+import { useState, useEffect } from "react";
+import { CalendarIcon, MapPin, Users } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/context/auth-context";
+import { useToast } from "@/components/ui/use-toast";
+import { supabase } from "@/lib/supabase";
+import type { Event } from "@/lib/types";
 
 interface EventCardProps {
   event: Event;
+  allowRemoveRSVP?: boolean;
+  onRemoveRSVP?: () => void;
 }
 
 interface Attendee {
@@ -19,15 +21,48 @@ interface Attendee {
   attendee_avatar_url: string | null;
 }
 
-export function EventCard({ event }: EventCardProps) {
-  const { title, category, description, date, time, location, max_attendees, id, creator_name, verified } = event
-  const { isAuthenticated, user } = useAuth()
-  const { toast } = useToast()
-  const [isRsvping, setIsRsvping] = useState(false)
-  const [attendeeCount, setAttendeeCount] = useState<number>(0)
-  const [hasRSVPd, setHasRSVPd] = useState(false)
+export function EventCard({ event, allowRemoveRSVP, onRemoveRSVP }: EventCardProps) {
+  const {
+    title,
+    category,
+    description,
+    date,
+    time,
+    location,
+    max_attendees,
+    id,
+    creator_name,
+    verified,
+  } = event;
 
-  // Fetch RSVP count & RSVP status for this event
+  const { isAuthenticated, user } = useAuth();
+  const { toast } = useToast();
+
+  const [isRsvping, setIsRsvping] = useState(false);
+  const [attendeeCount, setAttendeeCount] = useState<number>(0);
+  const [hasRSVPd, setHasRSVPd] = useState(false);
+  const [showAttendeeList, setShowAttendeeList] = useState(false);
+  const [attendees, setAttendees] = useState<Attendee[]>([]);
+  const [loadingAttendees, setLoadingAttendees] = useState(false);
+  const [attendeeSearch, setAttendeeSearch] = useState("");
+  const filteredAttendees = attendees.filter(
+    a =>
+      (a.attendee_first + " " + a.attendee_last)
+        .toLowerCase()
+        .includes(attendeeSearch.toLowerCase())
+  );
+
+  function getCategoryColor(c: string) {
+    return (
+      {
+        Social: "bg-purple-100 text-purple-800",
+        Academic: "bg-green-100 text-green-800",
+        Sports: "bg-red-100 text-red-800",
+        Arts: "bg-pink-100 text-pink-800",
+      }[c] || "bg-gray-100 text-gray-800"
+    );
+  }
+
   useEffect(() => {
     setLoadingAttendees(true);
     supabase
@@ -36,12 +71,11 @@ export function EventCard({ event }: EventCardProps) {
       .eq("event_id", id)
       .then(({ data, count }) => {
         setAttendees(data || []);
-        setCount(count || (data ? data.length : 0));
+        setAttendeeCount(count || (data ? data.length : 0));
         setLoadingAttendees(false);
       });
   }, [id, isRsvping]);
 
-  // 2) check if this user already RSVPd
   useEffect(() => {
     if (!isAuthenticated || !user) {
       setHasRSVPd(false);
@@ -56,7 +90,6 @@ export function EventCard({ event }: EventCardProps) {
       .then(({ data }) => setHasRSVPd(!!data));
   }, [isAuthenticated, user, id, isRsvping]);
 
-  // 3) RSVP handler now pulls name + avatar
   const handleRSVP = async () => {
     if (!isAuthenticated || !user) {
       toast({ title: "Login Required", description: "Please login to RSVP", variant: "destructive" });
@@ -70,30 +103,24 @@ export function EventCard({ event }: EventCardProps) {
       toast({ title: "Event Full", description: "No spots left!", variant: "destructive" });
       return;
     }
-
     setIsRsvping(true);
     try {
-      // make sure they haven't already RSVPd
       const { data: exists } = await supabase
         .from("event_rsvps")
         .select("*")
         .eq("event_id", id)
         .eq("user_id", user.id)
         .single();
-
       if (exists) {
         toast({ title: "Already RSVP'd" });
         setHasRSVPd(true);
         return;
       }
-
-      // fetch their profile info (first, last, avatar)
       const { data: prof, error: profErr } = await supabase
         .from("profiles")
         .select("first_name, last_name, avatar_url")
         .eq("id", user.id)
         .single();
-
       if (profErr || !prof) {
         toast({
           title: "Profile Load Failed",
@@ -102,22 +129,18 @@ export function EventCard({ event }: EventCardProps) {
         });
         return;
       }
-
-      // insert RSVP with avatar
       const { error: insErr } = await supabase
         .from("event_rsvps")
         .insert({
-          event_id:            id,
-          user_id:             user.id,
-          attendee_first:      prof.first_name,
-          attendee_last:       prof.last_name,
-          attendee_avatar_url: prof.avatar_url, // ← new column
+          event_id: id,
+          user_id: user.id,
+          attendee_first: prof.first_name,
+          attendee_last: prof.last_name,
+          attendee_avatar_url: prof.avatar_url,
         });
-
       if (insErr) throw insErr;
 
       toast({ title: "RSVP Successful" });
-      // flip immediately so UI updates
       setHasRSVPd(true);
     } catch (err: any) {
       console.error(err);
@@ -129,7 +152,7 @@ export function EventCard({ event }: EventCardProps) {
     } finally {
       setIsRsvping(false);
     }
-  }
+  };
 
   return (
     <div className="bg-white rounded-lg border p-6 transition-shadow hover:shadow-md">
@@ -143,7 +166,6 @@ export function EventCard({ event }: EventCardProps) {
               className="w-4 h-4 mr-1 text-blue-500"
               fill="currentColor"
               viewBox="0 0 20 20"
-              xmlns="http://www.w3.org/2000/svg"
             >
               <path
                 fillRule="evenodd"
@@ -166,23 +188,19 @@ export function EventCard({ event }: EventCardProps) {
 
       <div className="space-y-2 mb-4">
         <div className="flex items-center text-gray-500">
-          <CalendarIcon className="w-4 h-4 mr-2" />
+          <CalendarIcon className="w-4 h-4 mr-2 university-primary-text" />
           <span>{date} • {time}</span>
         </div>
         <div className="flex items-center text-gray-500">
-          <MapPin className="w-4 h-4 mr-2" />
+          <MapPin className="w-4 h-4 mr-2 university-primary-text" />
           <span>{location}</span>
         </div>
         <div className="flex items-center text-gray-500">
-          <Users className="w-4 h-4 mr-2 university-primary-text" />
-          <span>{attendeeCount} / {max_attendees} attendees</span>
+          <Users className="w-4 h-4 mr-2 text-orange-700" />
+          <span className="text-base">{attendeeCount} / {max_attendees} attendees</span>
           <button
             type="button"
-            className="ml-2 px-2 py-1 rounded-md border border-zinc-200 bg-white text-xs font-semibold transition hover:bg-zinc-50 focus:outline-none"
-            style={{
-              borderColor: "var(--primary-color)",
-              color: "var(--primary-color)"
-            }}
+            className="ml-2 px-3 py-1 rounded-md border border-orange-700 text-orange-700 font-bold bg-white text-base transition hover:bg-orange-50 focus:outline-none"
             onClick={() => setShowAttendeeList(true)}
             title="View attendees"
           >
@@ -192,19 +210,23 @@ export function EventCard({ event }: EventCardProps) {
       </div>
 
       <div className="flex justify-end">
-        <Button
-          className={hasRSVPd ? "bg-green-600 hover:bg-green-700" : "university-button"}
-          onClick={handleRSVP}
-          disabled={hasRSVPd || attendeeCount >= max_attendees || isRsvping}
-        >
-          {isRsvping
-            ? "Processing…"
-            : hasRSVPd
-            ? "Already RSVP'd"
-            : attendeeCount >= max_attendees
-            ? "Full"
-            : "RSVP"}
-        </Button>
+        {/* Only on manage page, upcoming tab, show remove button */}
+        {allowRemoveRSVP && onRemoveRSVP ? (
+          <Button
+            variant="outline"
+            className="border-orange-700 text-orange-700 font-semibold mt-4"
+            onClick={onRemoveRSVP}
+          >
+            Remove RSVP
+          </Button>
+        ) : (
+          // Only show Already RSVP'd on dashboard or any page that doesn't allow remove
+          hasRSVPd && (
+            <span className="bg-green-100 text-green-800 rounded-lg px-4 py-2 font-semibold mt-4 block">
+              Already RSVP'd
+            </span>
+          )
+        )}
       </div>
 
       {/* --- Modal for RSVP List --- */}
@@ -227,13 +249,20 @@ export function EventCard({ event }: EventCardProps) {
                 &times;
               </button>
             </div>
+            <input
+              type="text"
+              className="w-full mb-3 px-3 py-2 border rounded-md focus:outline-none focus:ring"
+              placeholder="Search by name…"
+              value={attendeeSearch}
+              onChange={e => setAttendeeSearch(e.target.value)}
+            />
             {loadingAttendees ? (
               <div>Loading…</div>
-            ) : attendees.length === 0 ? (
+            ) : filteredAttendees.length === 0 ? (
               <div className="text-gray-500 text-sm">No one has RSVP'd yet.</div>
             ) : (
               <ul className="space-y-3 max-h-64 overflow-y-auto">
-                {attendees.map((a, idx) => (
+                {filteredAttendees.map((a, idx) => (
                   <li key={idx} className="flex items-center gap-3">
                     <img
                       src={a.attendee_avatar_url || "/default-avatar.png"}
