@@ -19,7 +19,7 @@ export function ViewSelector() {
         }`}
       >
         <ListIcon size={16} className="inline" />
-        <span>List View</span>
+        <span>My Events</span>
       </Link>
 
       <Link

@@ -21,7 +21,7 @@ import { AlertCircle, MapPin } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { format } from "date-fns";
 import { getUniversityByName } from "@/lib/universities";
-import { VENUE_COORDS } from "@/lib/ut-venue-coordinates";
+import { VENUE_COORDS } from "@/lib/school-cords";
 import { motion } from "framer-motion";
 
 export default function CreateEventPage() {

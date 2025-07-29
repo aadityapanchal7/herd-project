@@ -1,60 +1,48 @@
-'use client';
+// components/hero‑section.tsx
+"use client";
 
-import React, { useState, useRef, useEffect, useMemo } from "react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Search, Filter, Calendar } from "lucide-react";
+import React, { useState, useRef } from "react";
 import { motion } from "framer-motion";
+import { Input } from "@/components/ui/input";
+import { Search as SearchIcon, Filter as FilterIcon, Calendar as CalIcon } from "lucide-react";
 import { useEvents } from "@/context/events-context";
-import { useAuth } from "@/context/auth-context";
 
-export function HeroSection() {
-  const {
-    setSearchTerm,
-    selectedCategory,
-    setSelectedCategory,
-    selectedDate,
-    setSelectedDate,
-  } = useEvents();
-  const { isAuthenticated, user } = useAuth();
+interface HeroSectionProps {
+  title: string;
+  subtitle: string;
+}
 
+export function HeroSection({ title, subtitle }: HeroSectionProps) {
+  const { setSearchTerm, selectedCategory, setSelectedCategory, selectedDate, setSelectedDate } = useEvents();
+
+  // Local state for the search input
   const [searchValue, setSearchValue] = useState("");
-  const [categoryOpen, setCategoryOpen] = useState(false);
-  const categoryRef = useRef<HTMLDivElement>(null);
-  const dateInputRef = useRef<HTMLInputElement & { showPicker?: () => void }>(
-    null
-  );
 
-  // Close category dropdown when clicking outside
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (
-        categoryRef.current &&
-        !categoryRef.current.contains(e.target as Node)
-      ) {
-        setCategoryOpen(false);
-      }
-    }
-    if (categoryOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [categoryOpen]);
+  // Ref to the hidden date input
+  const dateInputRef = useRef<HTMLInputElement & { showPicker?: () => void }>(null);
 
-  const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
+  // Helper to format YYYY-MM-DD to "Jul 28, 2025"
+  function formatLocalDate(iso: string) {
+    const [year, month, day] = iso.split("-").map(Number);
+    return new Date(year, month - 1, day).toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  }
+
+  // When the search form is submitted
+  function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     setSearchTerm(searchValue);
-  };
+  }
 
-  const categories = useMemo(() => {
-    return ["All", "Social", "Academic", "Sports", "Arts"];
-  }, []);
+  // Your category options
+  const categories = ["All", "Social", "Academic", "Sports", "Arts"];
 
   return (
     <>
-      {/* Header section */}
+      {/* Hero banner */}
       <motion.div
         initial={{ opacity: 0, y: 32 }}
         animate={{ opacity: 1, y: 0 }}
@@ -62,104 +50,96 @@ export function HeroSection() {
         className="university-primary-bg text-white py-8"
       >
         <div className="container max-w-6xl mx-auto px-4">
-          <h1 className="text-3xl md:text-4xl font-bold">Discover Events</h1>
-          <p className="mt-2 text-white/80">
-            Find and join events happening around your campus
-          </p>
+          <h1 className="text-3xl md:text-4xl font-bold">{title}</h1>
+          <p className="mt-2 text-white/80">{subtitle}</p>
         </div>
       </motion.div>
 
-      {/* filter bar */}
+      {/* Filter bar */}
       <section className="w-full py-8 bg-gradient-to-b from-[#f0edfb] to-[#f8f7fc]">
         <div className="container max-w-6xl mx-auto px-4">
           <motion.div
             initial={{ opacity: 0, y: 32 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, ease: "easeOut", delay: 0.15 }}
-            className="bg-white rounded-xl shadow-sm p-4 mb-6"
+            className="bg-white rounded-xl shadow-sm p-4 mb-6 flex flex-col md:flex-row gap-4 items-center"
           >
-            <div className="flex flex-col md:flex-row gap-4">
-              {/* search */}
-              <form onSubmit={handleSearch} className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  type="search"
-                  placeholder="Search for events..."
-                  className="w-full pl-10 pr-4 py-6 text-base border rounded-lg"
-                  value={searchValue}
-                  onChange={(e) => {
-                    setSearchValue(e.target.value);
-                    if (e.target.value === "") setSearchTerm("");
-                  }}
-                />
-              </form>
+            {/* Search box */}
+            <form onSubmit={handleSearch} className="flex-1 relative">
+              <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <Input
+                type="search"
+                placeholder="Search for events..."
+                className="w-full pl-10 pr-4 py-4 text-base border rounded-lg"
+                value={searchValue}
+                onChange={(e) => {
+                  setSearchValue(e.target.value);
+                  if (e.target.value === "") setSearchTerm("");
+                }}
+              />
+            </form>
 
-              <div className="flex gap-3 items-center">
-                {/* category */}
-                <div ref={categoryRef} className="relative inline-block text-left">
-                  <Button
-                    variant="outline"
-                    className="flex items-center gap-2 h-12 px-4 border rounded-lg hover:border-[#8a70d6] hover:text-[#8a70d6]"
-                    onClick={() => setCategoryOpen((o) => !o)}
-                  >
-                    <Filter className="h-4 w-4" />
-                    <span>Category: {selectedCategory}</span>
-                  </Button>
+            {/* Category select */}
+            <div className="relative">
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value as any)}
+                className="appearance-none pl-4 pr-10 py-2 bg-white border rounded-lg text-current focus:ring-2 focus:ring-current"
+              >
+                {categories.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat === "All" ? "All Categories" : cat}
+                  </option>
+                ))}
+              </select>
+              <FilterIcon className="absolute right-3 top-1/2 -translate-y-1/2 text-current" size={20} />
+            </div>
 
-                  {categoryOpen && (
-                    <ul className="absolute right-0 z-10 mt-1 w-40 bg-white border border-gray-200 rounded-lg shadow-md">
-                      {categories.map((cat) => (
-                        <li
-                          key={cat}
-                          onClick={() => {
-                            setSelectedCategory(cat as any);
-                            setCategoryOpen(false);
-                          }}
-                          className={`px-4 py-2 text-sm cursor-pointer hover:bg-gray-100 ${
-                            cat === selectedCategory
-                              ? "font-semibold text-[#8a70d6]"
-                              : "text-gray-700"
-                          }`}
-                        >
-                          {cat}
-                        </li>
-                      ))}
-                    </ul>
+            {/* Date picker */}
+            <div
+              className="relative w-full md:w-auto cursor-pointer"
+              onClick={() => dateInputRef.current?.showPicker?.()}
+            >
+              {/* Invisible native date input */}
+              <input
+                ref={dateInputRef}
+                type="date"
+                value={selectedDate === "All" ? "" : selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value || "All")}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                style={{ pointerEvents: "none" }}
+                tabIndex={-1}
+              />
+
+              {/* Styled “button” */}
+              <div className="flex items-center pl-4 pr-10 py-2 bg-white border rounded-lg text-current select-none">
+                <CalIcon className="mr-2" size={20} />
+                <span>
+                  Date:{" "}
+                  {selectedDate === "All" ? (
+                    "All"
+                  ) : (
+                    formatLocalDate(selectedDate)
                   )}
-                </div>
-
-                {/* date */}
-                <div className="relative inline-block">
-                  <Button
-                    variant="outline"
-                    className="flex items-center gap-2 h-12 px-4 border rounded-lg hover:border-[#8a70d6] hover:text-[#8a70d6] relative z-10"
-                    onClick={() => {
-                      const el = dateInputRef.current;
-                      if (!el) return;
-                      if (typeof el.showPicker === "function") {
-                        el.showPicker();
-                      } else {
-                        el.focus();
-                        el.click();
-                      }
-                    }}
-                  >
-                    <Calendar className="h-4 w-4" />
-                    <span>Date: {selectedDate}</span>
-                  </Button>
-
-                  <input
-                    ref={dateInputRef}
-                    type="date"
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-0"
-                    value={selectedDate === "All" ? "" : selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value || "All")}
-                  />
-                </div>
+                </span>
               </div>
+
+              {/* Clear “×” */}
+              {selectedDate !== "All" && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedDate("All");
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-lg text-gray-400 z-20"
+                  aria-label="Clear date"
+                >
+                  ×
+                </button>
+              )}
             </div>
           </motion.div>
-          {/* ← Toggle removed from here */}
         </div>
       </section>
     </>

@@ -1,18 +1,23 @@
-'use client'
+'use client';
 
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { Header } from '@/components/header'
-import { ConfigCheck } from '@/components/config-check'
-import MapView from '@/components/map-view'
-import { ViewSelector } from '@/components/view-selector'
-import { useAuth } from '@/context/auth-context'
-import { useToast } from '@/components/ui/use-toast'
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { Header } from '@/components/header';
+import { HeroSection } from '@/components/hero-section';
+import { ConfigCheck } from '@/components/config-check';
+import { ViewSelector } from '@/components/view-selector';
+import MapView from '@/components/map-view';
+import { useAuth } from '@/context/auth-context';
+import { useToast } from '@/components/ui/use-toast';
+import { deriveSchoolKey } from '@/lib/derive-school';
 
 export default function MapPage() {
-  const { isAuthenticated, loading: authLoading } = useAuth()
-  const router = useRouter()
-  const { toast } = useToast()
+  const { isAuthenticated, loading: authLoading, user } = useAuth();
+  const router = useRouter();
+  const { toast } = useToast();
+
+  // 1️⃣ derive schoolKey up here
+  const schoolKey = deriveSchoolKey(user?.university);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -20,10 +25,10 @@ export default function MapPage() {
         title: 'Authentication Required',
         description: 'You must be logged in to view the map',
         variant: 'destructive',
-      })
-      router.push('/login')
+      });
+      router.push('/login');
     }
-  }, [authLoading, isAuthenticated, router, toast])
+  }, [authLoading, isAuthenticated, router, toast]);
 
   return (
     <main className="min-h-screen bg-[#f8f7fc]">
@@ -32,11 +37,15 @@ export default function MapPage() {
         <ConfigCheck />
       </div>
 
-      {/* Tabs */}
-      <ViewSelector />
+      {/* Hero above map */}
+      <HeroSection
+        title={`${user?.university || 'Campus'} Map`}
+        subtitle="Explore events happening around your campus. Click on a marker or click “add” to select an event."
+      />
 
-      {/* Standalone map + built‑in filters & sidebar */}
-      <MapView />
+      {/* Tabs + MapView now takes schoolKey */}
+      <ViewSelector />
+      <MapView schoolKey={schoolKey} />
     </main>
-  )
+  );
 }

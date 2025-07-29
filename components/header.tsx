@@ -1,4 +1,4 @@
-'use client'
+"use client"
 
 import Link from "next/link"
 import { Bell, LogOut, User, PlusCircle, CalendarCheck, Users, Calendar } from "lucide-react"
