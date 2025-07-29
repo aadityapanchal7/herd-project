@@ -6,8 +6,8 @@ import { Header } from "@/components/header"
 import { useAuth } from "@/context/auth-context"
 import { supabase } from "@/lib/supabase"
 import type { Event } from "@/lib/types"
-import { EventCard } from "@/components/event-card"
-import { Calendar, Filter, Search } from "lucide-react"
+import { EventCardCreator } from "@/components/event-card-creator"
+import { Calendar, Filter, Search, Plus } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -16,9 +16,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 import { motion, AnimatePresence } from "framer-motion"
 
-export default function MyEventsPage() {
+export default function MyCreatedEventsPage() {
   const { isAuthenticated, user, loading: authLoading } = useAuth()
-  const [rsvpedEvents, setRsvpedEvents] = useState<Event[]>([])
+  const [createdEvents, setCreatedEvents] = useState<Event[]>([])
   const [filteredEvents, setFilteredEvents] = useState<Event[]>([])
   const [loadingEvents, setLoadingEvents] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
@@ -30,7 +30,7 @@ export default function MyEventsPage() {
     if (!authLoading && !isAuthenticated) {
       toast({
         title: "Authentication Required",
-        description: "You must be logged in to view your events",
+        description: "You must be logged in to view your created events",
         variant: "destructive",
       })
       router.push("/login")
@@ -38,7 +38,7 @@ export default function MyEventsPage() {
   }, [isAuthenticated, authLoading, router, toast])
 
   useEffect(() => {
-    async function fetchRsvpedEvents() {
+    async function fetchCreatedEvents() {
       if (!isAuthenticated || !user) {
         setLoadingEvents(false)
         return
@@ -46,42 +46,26 @@ export default function MyEventsPage() {
 
       setLoadingEvents(true)
       try {
-        // 1. Get the event IDs the user has RSVPed to
-        const { data: rsvpData, error: rsvpError } = await supabase
-          .from("event_rsvps")
-          .select("event_id")
-          .eq("user_id", user.id)
-
-        if (rsvpError) throw rsvpError
-
-        const eventIds = rsvpData.map((rsvp) => rsvp.event_id)
-
-        if (eventIds.length === 0) {
-          setRsvpedEvents([])
-          setFilteredEvents([])
-          setLoadingEvents(false)
-          return
-        }
-
-        // 2. Fetch the details of those events
-        const { data: eventData, error: eventError } = await supabase
+        const { data, error } = await supabase
           .from("events")
           .select("*")
-          .in("id", eventIds)
+          .eq("created_by", user.id)
           .order("date", { ascending: true })
 
-        if (eventError) throw eventError
+        if (error) {
+          throw error
+        }
 
-        setRsvpedEvents(eventData || [])
-        setFilteredEvents(eventData || [])
+        setCreatedEvents(data || [])
+        setFilteredEvents(data || [])
       } catch (error) {
-        console.error("Error fetching RSVPed events:", error)
+        console.error("Error fetching created events:", error)
         toast({
           title: "Error",
-          description: "Failed to load your RSVPed events.",
+          description: "Failed to load your created events.",
           variant: "destructive",
         })
-        setRsvpedEvents([])
+        setCreatedEvents([])
         setFilteredEvents([])
       } finally {
         setLoadingEvents(false)
@@ -89,15 +73,15 @@ export default function MyEventsPage() {
     }
 
     if (isAuthenticated && user) {
-      fetchRsvpedEvents()
+      fetchCreatedEvents()
     }
   }, [isAuthenticated, user, toast])
 
   // Filter and sort events when search query or sort option changes
   useEffect(() => {
-    if (!rsvpedEvents.length) return
+    if (!createdEvents.length) return
 
-    let filtered = [...rsvpedEvents]
+    let filtered = [...createdEvents]
 
     // Apply search filter
     if (searchQuery) {
@@ -127,35 +111,15 @@ export default function MyEventsPage() {
     }
 
     setFilteredEvents(filtered)
-  }, [searchQuery, sortOption, rsvpedEvents])
+  }, [searchQuery, sortOption, createdEvents])
 
   // Group events by upcoming and past
   const now = new Date()
   const upcomingEvents = filteredEvents.filter((event) => new Date(event.date) >= now)
   const pastEvents = filteredEvents.filter((event) => new Date(event.date) < now)
 
-  // --- Remove RSVP Handler ---
-  async function handleRemoveRSVP(eventId: number) {
-    if (!user) return
-    const { error } = await supabase
-      .from("event_rsvps")
-      .delete()
-      .eq("user_id", user.id)
-      .eq("event_id", eventId)
-    if (!error) {
-      setRsvpedEvents((prev) => prev.filter((e) => e.id !== eventId))
-      setFilteredEvents((prev) => prev.filter((e) => e.id !== eventId))
-      toast({
-        title: "RSVP Removed",
-        description: "Your RSVP was successfully removed.",
-      })
-    } else {
-      toast({
-        title: "Error",
-        description: "Failed to remove RSVP.",
-        variant: "destructive",
-      })
-    }
+  const handleEventDeleted = (eventId: number) => {
+    setCreatedEvents(prev => prev.filter(event => event.id !== eventId))
   }
 
   if (authLoading || loadingEvents) {
@@ -188,12 +152,12 @@ export default function MyEventsPage() {
       <Header />
       <div className="university-primary-bg text-white py-8">
         <div className="container max-w-6xl mx-auto px-4">
-          <h1 className="text-3xl md:text-4xl font-bold">My Events</h1>
-          <p className="mt-2 text-white/80">Manage all the events you've RSVPed to</p>
+          <h1 className="text-3xl md:text-4xl font-bold">My Created Events</h1>
+          <p className="mt-2 text-white/80">Manage all the events you've created</p>
         </div>
       </div>
       <main className="flex-1 container max-w-6xl mx-auto py-10 px-4">
-        {rsvpedEvents.length > 0 ? (
+        {createdEvents.length > 0 ? (
           <>
             <div className="flex flex-col md:flex-row justify-between gap-4 mb-8">
               <div className="relative flex-1">
@@ -218,6 +182,13 @@ export default function MyEventsPage() {
                     <SelectItem value="title-desc">Title (Z-A)</SelectItem>
                   </SelectContent>
                 </Select>
+                <Button 
+                  className="university-button university-button:hover text-white"
+                  onClick={() => router.push("/create-event")}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Event
+                </Button>
               </div>
             </div>
 
@@ -229,7 +200,7 @@ export default function MyEventsPage() {
                 </TabsTrigger>
                 <TabsTrigger value="past" className="flex gap-2 items-center">
                   <Calendar className="h-4 w-4" />
-                  Event History ({pastEvents.length})
+                  Past ({pastEvents.length})
                 </TabsTrigger>
               </TabsList>
 
@@ -249,10 +220,9 @@ export default function MyEventsPage() {
                           transition={{ duration: 0.5, ease: "easeOut", delay: idx * 0.05 }}
                           layout
                         >
-                          <EventCard
-                            event={event}
-                            allowRemoveRSVP
-                            onRemoveRSVP={() => handleRemoveRSVP(event.id)}
+                          <EventCardCreator 
+                            event={event} 
+                            onEventDeleted={handleEventDeleted}
                           />
                         </motion.div>
                       ))}
@@ -262,9 +232,13 @@ export default function MyEventsPage() {
                   <div className="text-center py-16 bg-white rounded-xl shadow-sm">
                     <Calendar className="h-12 w-12 mx-auto university-primary-text mb-4" />
                     <h3 className="text-xl font-semibold mb-2">No upcoming events</h3>
-                    <p className="text-gray-600 mb-6">You don't have any upcoming events you've RSVPed to.</p>
-                    <Button className="university-button university-button:hover text-white" onClick={() => router.push("/")}>
-                      Discover Events
+                    <p className="text-gray-600 mb-6">You don't have any upcoming events you've created.</p>
+                    <Button 
+                      className="university-button university-button:hover text-white" 
+                      onClick={() => router.push("/create-event")}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Event
                     </Button>
                   </div>
                 )}
@@ -286,8 +260,10 @@ export default function MyEventsPage() {
                           transition={{ duration: 0.5, ease: "easeOut", delay: idx * 0.05 }}
                           layout
                         >
-                          {/* NO remove rsvp for past */}
-                          <EventCard event={event} />
+                          <EventCardCreator 
+                            event={event} 
+                            onEventDeleted={handleEventDeleted}
+                          />
                         </motion.div>
                       ))}
                     </motion.div>
@@ -296,9 +272,13 @@ export default function MyEventsPage() {
                   <div className="text-center py-16 bg-white rounded-xl shadow-sm">
                     <Calendar className="h-12 w-12 mx-auto university-primary-text mb-4" />
                     <h3 className="text-xl font-semibold mb-2">No past events</h3>
-                    <p className="text-gray-600 mb-6">You don't have any past events you've RSVPed to.</p>
-                    <Button className="university-button university-button:hover text-white" onClick={() => router.push("/dashboard")}>
-                      Discover Events
+                    <p className="text-gray-600 mb-6">You don't have any past events you've created.</p>
+                    <Button 
+                      className="university-button university-button:hover text-white" 
+                      onClick={() => router.push("/create-event")}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Event
                     </Button>
                   </div>
                 )}
@@ -308,16 +288,21 @@ export default function MyEventsPage() {
         ) : (
           <div className="text-center py-16 bg-white rounded-xl shadow-sm mt-4">
             <Calendar className="h-16 w-16 mx-auto university-primary-text mb-4" />
-            <h2 className="text-2xl font-bold mb-2">No RSVPed Events</h2>
+            <h2 className="text-2xl font-bold mb-2">No Created Events</h2>
             <p className="text-gray-600 max-w-md mx-auto mb-8">
-              You haven't RSVPed to any events yet. Discover and join events that interest you!
+              You haven't created any events yet. Start by creating your first event!
             </p>
-            <Button size="lg" className="university-button university-button:hover text-white" onClick={() => router.push("/dashboard")}>
-              Discover Events
+            <Button 
+              size="lg" 
+              className="university-button university-button:hover text-white" 
+              onClick={() => router.push("/create-event")}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Create Your First Event
             </Button>
           </div>
         )}
       </main>
     </div>
   )
-}
+} 
