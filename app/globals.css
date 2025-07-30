@@ -156,3 +156,64 @@
 .marker-sports   .marker-inner { background-color: #EF4444; }
 .marker-arts     .marker-inner { background-color: #ec65a8; }
 .marker-default  .marker-inner { background-color: #6B7280; }
+
+/* ---------------------- */
+/*   TINDER CARD STYLES   */
+/* ---------------------- */
+
+/* Ensure cards don't overflow the container */
+#root {
+  overflow: hidden;
+}
+
+/* Swipe indicators animation */
+.react-tinder-card {
+  position: relative;
+}
+
+.react-tinder-card[data-direction="left"] .swipe-indicator-left {
+  opacity: 1 !important;
+}
+
+.react-tinder-card[data-direction="right"] .swipe-indicator-right {
+  opacity: 1 !important;
+}
+
+/* Card stacking visual effect */
+.react-tinder-card > div {
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  border-radius: 16px;
+  transition: transform 0.2s ease-out;
+}
+
+/* Smooth card transitions */
+.react-tinder-card {
+  position: absolute;
+  width: 320px;
+  height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Line clamp utility for text overflow */
+.line-clamp-1 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+
+.line-clamp-2 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.line-clamp-3 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}

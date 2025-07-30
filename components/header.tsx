@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Bell, LogOut, User, PlusCircle, CalendarCheck, Users, Calendar } from "lucide-react"
+import { Bell, LogOut, User, PlusCircle, CalendarCheck, Users, Calendar, Heart } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/context/auth-context"
 import { useRouter } from "next/navigation"
@@ -114,6 +114,13 @@ export function Header() {
                   <Link href="/members" className="flex w-full items-center">
                     <Users className="mr-2 h-4 w-4" />
                     Members
+                  </Link>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem>
+                  <Link href="/event-recommender" className="flex w-full items-center">
+                    <Heart className="mr-2 h-4 w-4" />
+                    Event Recommender
                   </Link>
                 </DropdownMenuItem>
 
