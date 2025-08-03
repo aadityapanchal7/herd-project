@@ -13,7 +13,7 @@ import { Toaster } from "@/components/ui/toaster";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Herd | Find Your Next Event",
+  title: "Herd | Find Your Next College Event",
   description: "Manage and join community events",
 };
 
