@@ -73,9 +73,9 @@ export function Header() {
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
                   <Avatar className="h-10 w-10">
                     <AvatarImage src={user?.avatar_url || ""} alt={user?.first_name || ""} />
-                    <AvatarFallback className="university-button text-primary-foreground">
-                      {user?.first_name?.[0]}
-                      {user?.last_name?.[0]}
+                    <AvatarFallback className="university-button font-semibold text-white">
+                      {user?.first_name?.[0].toUpperCase()}
+                      {user?.last_name?.[0].toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                 </Button>
@@ -117,12 +117,7 @@ export function Header() {
                   </Link>
                 </DropdownMenuItem>
 
-                <DropdownMenuItem>
-                  <Link href="/event-recommender" className="flex w-full items-center">
-                    <Heart className="mr-2 h-4 w-4" />
-                    Event Recommender
-                  </Link>
-                </DropdownMenuItem>
+
 
                 <DropdownMenuSeparator />
 

@@ -1,4 +1,4 @@
-"use client";
+'use client'
 
 import React, { useState, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
@@ -9,8 +9,9 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/auth-context";
 import { useToast } from "@/components/ui/use-toast";
 import type { Event } from "@/lib/types";
+import { Button } from "@/components/ui/button";
 
-// Dynamically import your map component
+// Dynamically import LeafletMap (no SSR)
 const LeafletMap = dynamic(() => import("@/components/leaflet-map"), {
   ssr: false,
 });
@@ -34,41 +35,49 @@ export default function MapView({ schoolKey }: { schoolKey?: string }) {
   const { user, isAuthenticated } = useAuth();
   const { events, searchTerm, selectedCategory, selectedDate } = useEvents();
 
-  // Merge events + coords
-  const eventsWithCoordinates = useMemo(
-    () =>
-      events
-        .map((evt) => {
-          const coords = VENUE_COORDS[schoolKey ?? ""]?.[evt.location];
-          if (!coords) return null;
-          return {
-            ...evt,
-            latitude: coords.latitude,
-            longitude: coords.longitude,
-            creator_name: evt.creator_name || "",
-            max_attendees: evt.max_attendees,
-            current_attendees: evt.current_attendees,
-          } as EventWithCoords;
-        })
-        .filter((e): e is EventWithCoords => !!e),
-    [events, schoolKey]
-  );
+  // Today's midnight for filtering
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
 
-  // Attendee counts
+  // Merge events + coords and hide past events by actual Date comparison
+  const eventsWithCoordinates = useMemo(() => {
+    return events
+      .filter(evt => {
+        const eventDate = new Date(evt.date);
+        return eventDate >= today;
+      })
+      .map(evt => {
+        const coords = VENUE_COORDS[schoolKey ?? ""]?.[evt.location];
+        if (!coords) return null;
+        return {
+          ...evt,
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+          creator_name: evt.creator_name || "",
+          max_attendees: evt.max_attendees,
+          current_attendees: evt.current_attendees,
+        } as EventWithCoords;
+      })
+      .filter((e): e is EventWithCoords => !!e);
+  }, [events, schoolKey, today]);
+
+  // Load RSVP counts
   const [attendeeCounts, setAttendeeCounts] = useState<Record<number, number>>({});
   async function loadAttendeeCounts() {
     const { data, error } = await supabase.from("event_rsvps").select("event_id");
     if (error) return;
     const counts: Record<number, number> = {};
-    eventsWithCoordinates.forEach((e) => (counts[e.id] = 0));
-    data?.forEach((r) => {
+    eventsWithCoordinates.forEach(e => (counts[e.id] = 0));
+    data?.forEach(r => {
       counts[r.event_id] = (counts[r.event_id] || 0) + 1;
     });
     setAttendeeCounts(counts);
   }
   useEffect(() => {
     loadAttendeeCounts();
-    // eslint-disable-next-line
   }, [eventsWithCoordinates.length]);
 
   // This user’s RSVPd IDs
@@ -87,17 +96,17 @@ export default function MapView({ schoolKey }: { schoolKey?: string }) {
         .from("event_rsvps")
         .select("event_id")
         .eq("user_id", user.id);
-      if (isSub) {
-        if (!error && data) setRsvpdIds(data.map((r) => r.event_id));
-        setRsvpsLoading(false);
+      if (isSub && !error && data) {
+        setRsvpdIds(data.map(r => r.event_id));
       }
+      setRsvpsLoading(false);
     })();
     return () => { isSub = false; };
   }, [user]);
 
   // Search/category/date filters
   const filteredEvents = useMemo(() => {
-    return eventsWithCoordinates.filter((evt) => {
+    return eventsWithCoordinates.filter(evt => {
       if (searchTerm && !evt.title.toLowerCase().includes(searchTerm.toLowerCase())) return false;
       if (selectedCategory !== "All" && evt.category !== selectedCategory) return false;
       if (selectedDate && selectedDate !== "All") {
@@ -110,7 +119,7 @@ export default function MapView({ schoolKey }: { schoolKey?: string }) {
 
   // Hide ones they’ve already RSVPd to
   const visibleEvents = useMemo(
-    () => filteredEvents.filter((evt) => !rsvpdIds.includes(evt.id)),
+    () => filteredEvents.filter(evt => !rsvpdIds.includes(evt.id)),
     [filteredEvents, rsvpdIds]
   );
 
@@ -120,13 +129,12 @@ export default function MapView({ schoolKey }: { schoolKey?: string }) {
   const [viewEventDetail, setViewEventDetail] = useState<EventWithCoords | null>(null);
 
   function toggleSelect(evt: EventWithCoords) {
-    setSelectedEvents((prev) =>
-      prev.some((e) => e.id === evt.id)
-        ? prev.filter((e) => e.id !== evt.id)
+    setSelectedEvents(prev =>
+      prev.some(e => e.id === evt.id)
+        ? prev.filter(e => e.id !== evt.id)
         : [...prev, evt]
     );
   }
-
   function handleMarkerClick(evt: EventWithCoords) {
     toggleSelect(evt);
     setPanToEvent(evt);
@@ -142,25 +150,19 @@ export default function MapView({ schoolKey }: { schoolKey?: string }) {
 
   const [viewSelected, setViewSelected] = useState(false);
   const sidebarList = viewSelected
-    ? selectedEvents.filter((e) => !rsvpdIds.includes(e.id))
+    ? selectedEvents.filter(e => !rsvpdIds.includes(e.id))
     : visibleEvents;
   const sidebarTitle = viewSelected ? "Selected Events" : "Nearby Events";
 
   // RSVP logic and attendee list
   const [rsvpLoading, setRsvpLoading] = useState(false);
   const [hasRSVPdDetail, setHasRSVPdDetail] = useState(false);
-
-  // For attendee modal in detail
   const [showAttendeeList, setShowAttendeeList] = useState(false);
   const [attendees, setAttendees] = useState<Attendee[]>([]);
   const [loadingAttendees, setLoadingAttendees] = useState(false);
-  // Search state for attendee modal
   const [attendeeSearch, setAttendeeSearch] = useState("");
-  const filteredAttendees = attendees.filter(
-    a =>
-      (a.attendee_first + " " + a.attendee_last)
-        .toLowerCase()
-        .includes(attendeeSearch.toLowerCase())
+  const filteredAttendees = attendees.filter(a =>
+    `${a.attendee_first} ${a.attendee_last}`.toLowerCase().includes(attendeeSearch.toLowerCase())
   );
 
   async function handleRSVP(evt: EventWithCoords) {
@@ -201,10 +203,10 @@ export default function MapView({ schoolKey }: { schoolKey?: string }) {
       const { error: insErr } = await supabase
         .from("event_rsvps")
         .insert({
-          event_id:            evt.id,
-          user_id:             user.id,
-          attendee_first:      prof.first_name,
-          attendee_last:       prof.last_name,
+          event_id: evt.id,
+          user_id: user.id,
+          attendee_first: prof.first_name,
+          attendee_last: prof.last_name,
           attendee_avatar_url: prof.avatar_url,
         });
 
@@ -212,7 +214,7 @@ export default function MapView({ schoolKey }: { schoolKey?: string }) {
 
       toast({ title: "RSVP Successful" });
       setHasRSVPdDetail(true);
-      setRsvpdIds((prev) => [...prev, evt.id]);
+      setRsvpdIds(prev => [...prev, evt.id]);
       await loadAttendeeCounts();
     } catch (err: any) {
       console.error(err);
@@ -254,7 +256,7 @@ export default function MapView({ schoolKey }: { schoolKey?: string }) {
               center={center}
               zoom={zoom}
               events={visibleEvents}
-              selectedEvents={selectedEvents.filter((e) => !rsvpdIds.includes(e.id))}
+              selectedEvents={selectedEvents.filter(e => !rsvpdIds.includes(e.id))}
               selectedEvent={panToEvent || undefined}
               onEventSelect={handleMarkerClick}
             />
@@ -268,7 +270,7 @@ export default function MapView({ schoolKey }: { schoolKey?: string }) {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-2xl font-bold text-zinc-800">{sidebarTitle}</h2>
             <button
-              onClick={() => setViewSelected((v) => !v)}
+              onClick={() => setViewSelected(v => !v)}
               className="university-button text-white px-4 py-2 rounded-md"
             >
               {viewSelected ? "More Nearby Events" : "Selected Events"}
@@ -280,13 +282,13 @@ export default function MapView({ schoolKey }: { schoolKey?: string }) {
               {viewSelected ? "You haven’t selected any events." : "No nearby events."}
             </p>
           ) : (
-            sidebarList.map((evt) => {
-              const isSel = selectedEvents.some((e) => e.id === evt.id);
+            sidebarList.map(evt => {
+              const isSel = selectedEvents.some(e => e.id === evt.id);
               const badgeCls = {
-                Social:   "bg-purple-100 text-purple-800",
+                Social: "bg-purple-100 text-purple-800",
                 Academic: "bg-green-100 text-green-800",
-                Sports:   "bg-red-100 text-red-800",
-                Arts:     "bg-pink-100 text-pink-800",
+                Sports: "bg-red-100 text-red-800",
+                Arts: "bg-pink-100 text-pink-800",
               }[evt.category] || "bg-gray-100 text-gray-800";
 
               return (
@@ -297,7 +299,7 @@ export default function MapView({ schoolKey }: { schoolKey?: string }) {
                 >
                   {!viewSelected ? (
                     <button
-                      onClick={(e) => {
+                      onClick={e => {
                         e.stopPropagation();
                         toggleSelect(evt);
                       }}
@@ -309,7 +311,7 @@ export default function MapView({ schoolKey }: { schoolKey?: string }) {
                     </button>
                   ) : (
                     <button
-                      onClick={(e) => {
+                      onClick={e => {
                         e.stopPropagation();
                         toggleSelect(evt);
                       }}
@@ -321,7 +323,7 @@ export default function MapView({ schoolKey }: { schoolKey?: string }) {
 
                   {viewSelected && (
                     <button
-                      onClick={(e) => {
+                      onClick={e => {
                         e.stopPropagation();
                         setViewEventDetail(evt);
                       }}
@@ -345,8 +347,10 @@ export default function MapView({ schoolKey }: { schoolKey?: string }) {
                     {evt.location}
                   </p>
                   <div className="flex items-center text-gray-500 mt-1">
-                    <Users className="w-4 h-4 mr-2 university-primary" />
-                    <span className="text-base">{attendeeCounts[evt.id] || 0} / {evt.max_attendees} attendees</span>
+                    <Users className="w-4 h-4 mr-2 text-[var(--primary-color)]" />
+                    <span className="text-base">
+                      {attendeeCounts[evt.id] || 0} / {evt.max_attendees} attendees
+                    </span>
                   </div>
                 </div>
               );
@@ -355,74 +359,92 @@ export default function MapView({ schoolKey }: { schoolKey?: string }) {
         </aside>
       </div>
 
-      {/* --- RSVP Detail Modal --- */}
+
+      {/* RSVP Detail Modal */}
       {viewEventDetail && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10000]">
-          <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6 relative">
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10000]"
+          onClick={() => setViewEventDetail(null)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-lg max-w-md w-full p-6 relative"
+            onClick={e => e.stopPropagation()}
+          >
             <button
               onClick={() => setViewEventDetail(null)}
               className="absolute top-3 right-3 university-primary-text hover:opacity-80"
             >
               <XIcon size={20} />
             </button>
-            <h2 className="text-2xl font-bold mb-2">{viewEventDetail.title}</h2>
-            <p className="mb-1">
-              <strong>Category:</strong> {viewEventDetail.category}
-            </p>
-            <p className="mb-2 text-sm text-gray-600">{viewEventDetail.description}</p>
-            <p className="mb-1 flex items-center">
-              <CalIcon className="w-4 h-4 mr-1 university-primary-text" />
-              {viewEventDetail.date} at {viewEventDetail.time}
-            </p>
-            <p className="mb-1 flex items-center">
-              <MapPin className="w-4 h-4 mr-1 university-primary-text" />
-              {viewEventDetail.location}
-            </p>
-            <p className="mb-1">
-              <strong>Hosted by:</strong> {viewEventDetail.creator_name}
-            </p>
-            {/* --- Attendees Row --- */}
-            <div className="flex items-center gap-2 mt-1">
-              <Users className="w-5 h-5 text-orange-700" />
-              <span className="text-base text-gray-600 font-normal">
-                {attendeeCounts[viewEventDetail.id] || 0} / {viewEventDetail.max_attendees} attendees
-              </span>
-              <button
-                className="ml-4 px-4 py-1 rounded-lg border-2 border-orange-700 text-orange-700 font-bold bg-white transition hover:bg-orange-50 focus:outline-none"
-                onClick={async () => {
-                  setShowAttendeeList(true);
-                  setLoadingAttendees(true);
-                  setAttendeeSearch("");
-                  const { data } = await supabase
-                    .from("event_rsvps")
-                    .select("attendee_first, attendee_last, attendee_avatar_url")
-                    .eq("event_id", viewEventDetail.id);
-                  setAttendees(data || []);
-                  setLoadingAttendees(false);
-                }}
-                type="button"
-              >
-                View
-              </button>
+
+            <h2 className="text-2xl font-bold mt-2 mb-1">{viewEventDetail.title}</h2>
+            {viewEventDetail.creator_name && (
+              <p className="text-sm text-gray-500 mb-2">
+                <strong>Hosted by:</strong> {viewEventDetail.creator_name}
+              </p>
+            )}
+            {viewEventDetail.description && (
+              <p className="text-gray-600 mb-4">{viewEventDetail.description}</p>
+            )}
+
+            <div className="space-y-2 mb-4">
+              <div className="flex items-center text-gray-500">
+                <CalIcon className="w-4 h-4 mr-2 university-primary-text" />
+                <span>
+                  {viewEventDetail.date} • {viewEventDetail.time}
+                </span>
+              </div>
+              <div className="flex items-center text-gray-500">
+                <MapPin className="w-4 h-4 mr-2 university-primary-text" />
+                <span>{viewEventDetail.location}</span>
+              </div>
             </div>
-            <button
-              onClick={() => handleRSVP(viewEventDetail)}
-              disabled={
-                rsvpLoading ||
-                (attendeeCounts[viewEventDetail.id] || 0) >= viewEventDetail.max_attendees ||
-                hasRSVPdDetail
-              }
-              className="mt-6 float-right university-button text-white px-4 py-2 rounded-md font-semibold disabled:opacity-50"
-            >
-              {rsvpLoading
-                ? "RSVP…"
-                : (attendeeCounts[viewEventDetail.id] || 0) >= viewEventDetail.max_attendees
-                ? "Full"
-                : hasRSVPdDetail
-                ? "Already RSVP’d"
-                : "RSVP Now"}
-            </button>
-            {/* --- Attendee List Modal --- */}
+
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center text-gray-500">
+                <button
+                  type="button"
+                  title="View attendees"
+                  className="group flex items-center justify-center w-8 h-8 rounded-md border border-[var(--primary-color)] bg-white hover:bg-[var(--primary-color)] transition-colors focus:outline-none mr-2"
+                  onClick={async () => {
+                    setShowAttendeeList(true);
+                    setLoadingAttendees(true);
+                    setAttendeeSearch("");
+                    const { data } = await supabase
+                      .from("event_rsvps")
+                      .select("attendee_first, attendee_last, attendee_avatar_url")
+                      .eq("event_id", viewEventDetail.id);
+                    setAttendees(data || []);
+                    setLoadingAttendees(false);
+                  }}
+                >
+                  <Users className="w-5 h-5 text-[var(--primary-color)] group-hover:text-white transition-colors" />
+                </button>
+                <span className="text-base">
+                  {attendeeCounts[viewEventDetail.id] || 0} / {viewEventDetail.max_attendees} attendees
+                </span>
+              </div>
+
+              <Button
+                onClick={() => handleRSVP(viewEventDetail)}
+                disabled={
+                  rsvpLoading ||
+                  (attendeeCounts[viewEventDetail.id] || 0) >= viewEventDetail.max_attendees ||
+                  hasRSVPdDetail
+                }
+                className="university-button text-white px-4 py-2 rounded-md font-semibold disabled:opacity-50"
+              >
+                {rsvpLoading
+                  ? "RSVP…"
+                  : (attendeeCounts[viewEventDetail.id] || 0) >= viewEventDetail.max_attendees
+                  ? "Full"
+                  : hasRSVPdDetail
+                  ? "Already RSVP’d"
+                  : "RSVP Now"}
+              </Button>
+            </div>
+
+            {/* Attendee List Modal */}
             {showAttendeeList && (
               <div
                 className="fixed inset-0 z-[11000] bg-black/40 flex items-center justify-center"
@@ -456,12 +478,25 @@ export default function MapView({ schoolKey }: { schoolKey?: string }) {
                     <ul className="space-y-3 max-h-64 overflow-y-auto">
                       {filteredAttendees.map((a, idx) => (
                         <li key={idx} className="flex items-center gap-3">
-                          <img
-                            src={a.attendee_avatar_url || "/default-avatar.png"}
-                            alt={`${a.attendee_first} ${a.attendee_last}`}
-                            className="w-8 h-8 rounded-full object-cover border"
-                            onError={e => (e.currentTarget.src = "/default-avatar.png")}
-                          />
+                          {a.attendee_avatar_url ? (
+                            <img
+                              src={a.attendee_avatar_url}
+                              alt={`${a.attendee_first} ${a.attendee_last}`}
+                              className="w-8 h-8 rounded-full object-cover border"
+                              onError={e => (e.currentTarget.src = "/ut-default-avatar.jpg")}
+                            />
+                          ) : (
+                            <div
+                              className="w-8 h-8 rounded-full flex items-center justify-center font-semibold text-white"
+                              style={{
+                                backgroundColor: "var(--primary-color)",
+                                fontSize: 14,
+                              }}
+                            >
+                              {a.attendee_first[0]?.toUpperCase()}
+                              {a.attendee_last[0]?.toUpperCase()}
+                            </div>
+                          )}
                           <span>
                             {a.attendee_first} {a.attendee_last}
                           </span>

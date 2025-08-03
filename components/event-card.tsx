@@ -1,4 +1,5 @@
-"use client"
+// components/EventCard.tsx
+"use client";
 
 import { useState, useEffect } from "react";
 import { CalendarIcon, MapPin, Users } from "lucide-react";
@@ -11,7 +12,9 @@ import type { Event } from "@/lib/types";
 
 interface EventCardProps {
   event: Event;
+  /** show a “Remove RSVP” button instead of RSVP/Already RSVP’d */
   allowRemoveRSVP?: boolean;
+  /** callback to call when Remove RSVP is clicked */
   onRemoveRSVP?: () => void;
 }
 
@@ -21,7 +24,11 @@ interface Attendee {
   attendee_avatar_url: string | null;
 }
 
-export function EventCard({ event, allowRemoveRSVP, onRemoveRSVP }: EventCardProps) {
+export function EventCard({
+  event,
+  allowRemoveRSVP = false,
+  onRemoveRSVP,
+}: EventCardProps) {
   const {
     title,
     category,
@@ -45,37 +52,39 @@ export function EventCard({ event, allowRemoveRSVP, onRemoveRSVP }: EventCardPro
   const [attendees, setAttendees] = useState<Attendee[]>([]);
   const [loadingAttendees, setLoadingAttendees] = useState(false);
   const [attendeeSearch, setAttendeeSearch] = useState("");
-  const filteredAttendees = attendees.filter(
-    a =>
-      (a.attendee_first + " " + a.attendee_last)
-        .toLowerCase()
-        .includes(attendeeSearch.toLowerCase())
+  const filteredAttendees = attendees.filter((a) =>
+    `${a.attendee_first} ${a.attendee_last}`
+      .toLowerCase()
+      .includes(attendeeSearch.toLowerCase())
   );
 
   function getCategoryColor(c: string) {
-    return (
-      {
-        Social: "bg-purple-100 text-purple-800",
-        Academic: "bg-green-100 text-green-800",
-        Sports: "bg-red-100 text-red-800",
-        Arts: "bg-pink-100 text-pink-800",
-      }[c] || "bg-gray-100 text-gray-800"
-    );
+    return {
+      Social: "bg-purple-100 text-purple-800",
+      Academic: "bg-green-100 text-green-800",
+      Sports: "bg-red-100 text-red-800",
+      Arts: "bg-pink-100 text-pink-800",
+    }[c] ?? "bg-gray-100 text-gray-800";
   }
 
+  // fetch attendee count & avatars
   useEffect(() => {
     setLoadingAttendees(true);
     supabase
       .from("event_rsvps")
-      .select("attendee_first, attendee_last, attendee_avatar_url", { count: "exact", head: false })
+      .select("attendee_first, attendee_last, attendee_avatar_url", {
+        count: "exact",
+        head: false,
+      })
       .eq("event_id", id)
       .then(({ data, count }) => {
         setAttendees(data || []);
-        setAttendeeCount(count || (data ? data.length : 0));
+        setAttendeeCount(count ?? data?.length ?? 0);
         setLoadingAttendees(false);
       });
   }, [id, isRsvping]);
 
+  // check if current user RSVP'd
   useEffect(() => {
     if (!isAuthenticated || !user) {
       setHasRSVPd(false);
@@ -103,8 +112,10 @@ export function EventCard({ event, allowRemoveRSVP, onRemoveRSVP }: EventCardPro
       toast({ title: "Event Full", description: "No spots left!", variant: "destructive" });
       return;
     }
+
     setIsRsvping(true);
     try {
+      // double-check
       const { data: exists } = await supabase
         .from("event_rsvps")
         .select("*")
@@ -112,10 +123,11 @@ export function EventCard({ event, allowRemoveRSVP, onRemoveRSVP }: EventCardPro
         .eq("user_id", user.id)
         .single();
       if (exists) {
-        toast({ title: "Already RSVP'd" });
         setHasRSVPd(true);
+        toast({ title: "Already RSVP'd" });
         return;
       }
+
       const { data: prof, error: profErr } = await supabase
         .from("profiles")
         .select("first_name, last_name, avatar_url")
@@ -129,6 +141,7 @@ export function EventCard({ event, allowRemoveRSVP, onRemoveRSVP }: EventCardPro
         });
         return;
       }
+
       const { error: insErr } = await supabase
         .from("event_rsvps")
         .insert({
@@ -140,8 +153,8 @@ export function EventCard({ event, allowRemoveRSVP, onRemoveRSVP }: EventCardPro
         });
       if (insErr) throw insErr;
 
-      toast({ title: "RSVP Successful" });
       setHasRSVPd(true);
+      toast({ title: "RSVP Successful" });
     } catch (err: any) {
       console.error(err);
       toast({
@@ -162,6 +175,7 @@ export function EventCard({ event, allowRemoveRSVP, onRemoveRSVP }: EventCardPro
         </Badge>
         {verified && (
           <div className="flex items-center text-blue-600 text-sm">
+            {/* verified icon */}
             <svg
               className="w-4 h-4 mr-1 text-blue-500"
               fill="currentColor"
@@ -187,51 +201,62 @@ export function EventCard({ event, allowRemoveRSVP, onRemoveRSVP }: EventCardPro
       <p className="text-gray-600 mb-4">{description}</p>
 
       <div className="space-y-2 mb-4">
-      <div className="flex items-center text-gray-500">
-          <CalendarIcon className="w-4 h-4 mr-2" style={{ color: "var(--primary-color)" }} />
-          <span>{date} • {time}</span>
+        <div className="flex items-center text-gray-500">
+          <CalendarIcon
+            className="w-4 h-4 mr-2"
+            style={{ color: "var(--primary-color)" }}
+          />
+          <span>
+            {date} • {time}
+          </span>
         </div>
         <div className="flex items-center text-gray-500">
-          <MapPin className="w-4 h-4 mr-2" style={{ color: "var(--primary-color)" }} />
+          <MapPin
+            className="w-4 h-4 mr-2"
+            style={{ color: "var(--primary-color)" }}
+          />
           <span>{location}</span>
         </div>
         <div className="flex items-center text-gray-500">
-          <Users className="w-4 h-4 mr-2" style={{ color: "var(--primary-color)" }} />
-          <span className="text-base">{attendeeCount} / {max_attendees} attendees</span>
+          {/* boxed users icon */}
           <button
-  type="button"
-  className="ml-2 px-3 py-1 rounded-md border font-bold bg-white text-base transition focus:outline-none
-    text-[var(--primary-color)] border-[var(--primary-color)] hover:bg-[var(--primary-color)] hover:text-white"
-  onClick={() => setShowAttendeeList(true)}
-  title="View attendees"
->
-  View
-</button>
-
+            type="button"
+            className="group flex items-center justify-center w-8 h-8 rounded-md border border-[var(--primary-color)] bg-white hover:bg-[var(--primary-color)] transition-colors focus:outline-none mr-2"
+            onClick={() => setShowAttendeeList(true)}
+            title="View attendees"
+          >
+            <Users className="w-5 h-5 text-[var(--primary-color)] group-hover:text-white transition-colors" />
+          </button>
+          <span className="text-base">
+            {attendeeCount} / {max_attendees} attendees
+          </span>
         </div>
       </div>
 
       <div className="flex justify-end">
-        {/* Only on manage page, upcoming tab, show remove button */}
         {allowRemoveRSVP && onRemoveRSVP ? (
           <Button
             variant="outline"
-            className="border-red-700 text-red-700 hover:bg-red-500 font-semibold mt-4"
+            className="border-red-700 text-red-700 hover:bg-red-500 font-semibold"
             onClick={onRemoveRSVP}
           >
             Remove RSVP
           </Button>
+        ) : hasRSVPd ? (
+          <span className="bg-green-100 text-green-800 rounded-lg px-4 py-2 font-semibold">
+            Already RSVP'd
+          </span>
         ) : (
-          // Only show Already RSVP'd on dashboard or any page that doesn't allow remove
-          hasRSVPd && (
-            <span className="bg-green-100 text-green-800 rounded-lg px-4 py-2 font-semibold mt-4 block">
-              Already RSVP'd
-            </span>
-          )
+          <Button
+            className="university-button"
+            onClick={handleRSVP}
+            disabled={isRsvping || attendeeCount >= max_attendees}
+          >
+            {isRsvping ? "Processing…" : "RSVP"}
+          </Button>
         )}
       </div>
 
-      {/* --- Modal for RSVP List --- */}
       {showAttendeeList && (
         <div
           className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center"
@@ -239,7 +264,7 @@ export function EventCard({ event, allowRemoveRSVP, onRemoveRSVP }: EventCardPro
         >
           <div
             className="bg-white rounded-lg p-6 max-w-xs w-full shadow-lg"
-            onClick={e => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center mb-3">
               <h4 className="font-semibold text-lg">Attendees</h4>
@@ -256,22 +281,39 @@ export function EventCard({ event, allowRemoveRSVP, onRemoveRSVP }: EventCardPro
               className="w-full mb-3 px-3 py-2 border rounded-md focus:outline-none focus:ring"
               placeholder="Search by name…"
               value={attendeeSearch}
-              onChange={e => setAttendeeSearch(e.target.value)}
+              onChange={(e) => setAttendeeSearch(e.target.value)}
             />
             {loadingAttendees ? (
               <div>Loading…</div>
             ) : filteredAttendees.length === 0 ? (
-              <div className="text-gray-500 text-sm">No one has RSVP'd yet.</div>
+              <div className="text-gray-500 text-sm">
+                No one has RSVP'd yet.
+              </div>
             ) : (
               <ul className="space-y-3 max-h-64 overflow-y-auto">
                 {filteredAttendees.map((a, idx) => (
                   <li key={idx} className="flex items-center gap-3">
-                    <img
-                      src={a.attendee_avatar_url || "/default-avatar.png"}
-                      alt={`${a.attendee_first} ${a.attendee_last}`}
-                      className="w-8 h-8 rounded-full object-cover border"
-                      onError={e => (e.currentTarget.src = "/default-avatar.png")}
-                    />
+                    {a.attendee_avatar_url ? (
+                      <img
+                        src={a.attendee_avatar_url}
+                        alt={`${a.attendee_first} ${a.attendee_last}`}
+                        className="w-8 h-8 rounded-full object-cover border"
+                        onError={(e) =>
+                          (e.currentTarget.src = "/ut-default-avatar.jpg")
+                        }
+                      />
+                    ) : (
+                      <div
+                        className="w-8 h-8 rounded-full flex items-center justify-center font-semibold text-white"
+                        style={{
+                          backgroundColor: "var(--primary-color)",
+                          fontSize: 14,
+                        }}
+                      >
+                        {a.attendee_first[0]?.toUpperCase()}
+                        {a.attendee_last[0]?.toUpperCase()}
+                      </div>
+                    )}
                     <span>
                       {a.attendee_first} {a.attendee_last}
                     </span>
