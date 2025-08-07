@@ -234,7 +234,7 @@ export default function CreateEventPage() {
               <Input
                 id="creator_name"
                 name="creator_name"
-                placeholder="e.g., Longhorn Lockpicking Club, Jane Doe"
+                placeholder="e.g., Student Union, Jane Doe"
                 value={formData.creator_name}
                 onChange={handleChange}
                 required

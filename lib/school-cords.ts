@@ -7,229 +7,495 @@ export interface VenueCoords {
   string, // school name
   Record<string, VenueCoords> >= {
     ut_austin: {
-    "Almetris Duren Residence Hall": { latitude: 30.289651, longitude: -97.733222 },
-    "Athletic Fields Pavilion (Rehab)": { latitude: 30.299270, longitude: -97.719300 },
-    "Athletic Fields Pavilion (Eastside)": { latitude: 30.299211, longitude: -97.718505 },
-    "Athletic Fields Pavilion": { latitude: 30.299162, longitude: -97.719899 },
-    "Anna Hiss Gymnasium": { latitude: 30.289704, longitude: -97.736911 },
-    "Arno Nowotny Building": { latitude: 30.286293, longitude: -97.733751 },
-    "Andrews Residence Hall": { latitude: 30.287138, longitude: -97.741790 },
-    "Animal Resources Center": { latitude: 30.287676, longitude: -97.736799 },
-    "Art Building and Museum": { latitude: 30.284286, longitude: -97.738742 },
-    "Aerospace Engineering Building": { latitude: 30.288649, longitude: -97.736132 },
-    "AT&T Executive Education & Conf Center": { latitude: 30.281884, longitude: -97.741413 },
-    "Batts Hall": { latitude: 30.285870, longitude: -97.738752 },
-    "Basketball & Rowing Training Facility": { latitude: 30.277526, longitude: -97.728893 },
-    "L. Theo Bellmont Hall": { latitude: 30.282847, longitude: -97.734369 },
-    "Benedict Hall": { latitude: 30.284194, longitude: -97.738937 },
-    "Biological Sciences Greenhouses": { latitude: 30.287487, longitude: -97.736381 },
-    "Brackenridge Residence Hall": { latitude: 30.288003, longitude: -97.742425 },
-    "Biological Laboratories": { latitude: 30.285237, longitude: -97.736752 },
-    "Blanton Residence Hall": { latitude: 30.287464, longitude: -97.740612 },
-    "Jack S. Blanton Museum of Art": { latitude: 30.280812, longitude: -97.737340 },
-    "Biomedical Engineering Building": { latitude: 30.287027, longitude: -97.736624 },
-    "Blanton Museum Ellsworth Kelly": { latitude: 30.281430, longitude: -97.737193 },
-    "Blanton Museum Smith Building": { latitude: 30.280926, longitude: -97.737723 },
-    "Biological Greenhouse": { latitude: 30.287215, longitude: -97.736180 },
-    "Bernard and Audre Rapoport Building": { latitude: 30.288326, longitude: -97.736043 },
-    "Brazos Garage": { latitude: 30.280707, longitude: -97.735904 },
-    "Basketball Support Building (Rec Sport)": { latitude: 30.277664, longitude: -97.728834 },
-    "Battle Hall": { latitude: 30.285013, longitude: -97.738888 },
-    "Burdine Hall": { latitude: 30.285146, longitude: -97.738082 },
-    "2616 Wichita (Bridgeway)": { latitude: 30.289245, longitude: -97.730425 },
-    "Calhoun Hall": { latitude: 30.285761, longitude: -97.738853 },
-    "College of Business Administration": { latitude: 30.283950, longitude: -97.737892 },
-    "Conference Center Garage": { latitude: 30.283027, longitude: -97.740190 },
-    "Connally Center for Justice": { latitude: 30.289378, longitude: -97.736090 },
-    "Comal Child Development Center Annex": { latitude: 30.278779, longitude: -97.734548 },
-    "Collections Deposit Library": { latitude: 30.280284, longitude: -97.733269 },
-    "Caven Clark Field Support Building": { latitude: 30.298243, longitude: -97.723385 },
-    "Jesse H. Jones Comm. Center (Bldg. A)": { latitude: 30.289420, longitude: -97.736593 },
-    "Jesse H. Jones Comm. Center (Bldg. B)": { latitude: 30.289243, longitude: -97.737236 },
-    "Comal St. Child Development Center": { latitude: 30.278586, longitude: -97.734326 },
-    "Computation Center": { latitude: 30.286598, longitude: -97.737143 },
-    "Compactor Building": { latitude: 30.280372, longitude: -97.734565 },
-    "CPC Field Staff Office": { latitude: 30.312328, longitude: -97.720722 },
-    "Chemical and Petroleum Engineering": { latitude: 30.287314, longitude: -97.736156 },
-    "Computational Resource Building": { latitude: 30.284980, longitude: -97.736089 },
-    "Carothers Residence Hall": { latitude: 30.287445, longitude: -97.741800 },
-    "Creekside Residence Hall": { latitude: 30.287085, longitude: -97.743145 },
-    "Central Chilling Station No. 3": { latitude: 30.285149, longitude: -97.737129 },
-    "Central Chilling Station No. 4": { latitude: 30.292199, longitude: -97.729538 },
-    "Central Chilling Station No. 5": { latitude: 30.294911, longitude: -97.728057 },
-    "Central Chilling Station No. 6": { latitude: 30.296060, longitude: -97.722474 },
-    "Central Chilling Station No. 7": { latitude: 30.277104, longitude: -97.727009 },
-    "Carothers Dorm Substation": { latitude: 30.287647, longitude: -97.741685 },
-    "UTM Cooling Tower 1": { latitude: 30.287383, longitude: -97.732728 },
-    "UTM Cooling Tower 2": { latitude: 30.288201, longitude: -97.732650 },
-    "UTM Cooling Tower 7": { latitude: 30.277115, longitude: -97.726963 },
-    "Dobie Twenty21": { latitude: 30.283618, longitude: -97.738953 },
-    "Development Office Building": { latitude: 30.280669, longitude: -97.737374 },
-    "E. William Doty Fine Arts Building": { latitude: 30.284261, longitude: -97.737395 },
-    "UFCU Disch-Falk Field": { latitude: 30.277797, longitude: -97.722755 },
-    "G. B. Dealey Center for New Media": { latitude: 30.289462, longitude: -97.736641 },
-    "Dell Pediatric Research Institute": { latitude: 30.277673, longitude: -97.712431 },
-    "Dinosaur Trackway Bldg.": { latitude: 30.285777, longitude: -97.736929 },
-    "Equipment Storehouse # 11": { latitude: 30.287019, longitude: -97.736681 },
-    "Equipment Storehouse # 13": { latitude: 30.287150, longitude: -97.736873 },
-    "Equipment Storehouse # 15": { latitude: 30.287293, longitude: -97.736998 },
-    "Equipment Storehouse # 23": { latitude: 30.287294, longitude: -97.737028 },
-    "Equipment Storehouse # 24": { latitude: 30.287493, longitude: -97.737283 },
-    "Equipment Storehouse # 25": { latitude: 30.287598, longitude: -97.737332 },
-    "Equipment Storehouse #26": { latitude: 30.287550, longitude: -97.737534 },
-    "Equipment Storehouse #27": { latitude: 30.287667, longitude: -97.737575 },
-    "East Campus Garage": { latitude: 30.289362, longitude: -97.733668 },
-    "Ernest Cockrell Jr. Hall": { latitude: 30.289444, longitude: -97.736099 },
-    "Engr Education and Research Center": { latitude: 30.287926, longitude: -97.736328 },
-    "ETC Haz-Mat Storage Building": { latitude: 30.287900, longitude: -97.736298 },
-    "E.P. Schoch Building": { latitude: 30.289573, longitude: -97.736689 },
-    "Engineering Teaching Center II": { latitude: 30.288444, longitude: -97.736417 },
-    "FC8 Chemical Storage Building": { latitude: 30.287694, longitude: -97.736951 },
-    "Peter T. Flawn Academic Center": { latitude: 30.285900, longitude: -97.738255 },
-    "Facilities Complex Bldg. 1": { latitude: 30.288812, longitude: -97.723770 },
-    "Facilities Complex Bldg. 2": { latitude: 30.288988, longitude: -97.723959 },
-    "Facilities Complex Bldg. 3": { latitude: 30.289117, longitude: -97.724051 },
-    "Facilities Complex Bldg. 4": { latitude: 30.289210, longitude: -97.724099 },
-    "Facilities Complex Bldg. 5": { latitude: 30.289366, longitude: -97.724148 },
-    "Facilities Complex Bldg. 6": { latitude: 30.289515, longitude: -97.724200 },
-    "Facilities Complex Bldg. 7": { latitude: 30.289664, longitude: -97.724248 },
-    "Facilities Complex Bldg. 8": { latitude: 30.289780, longitude: -97.724330 },
-    "Custodial Services Training Fac": { latitude: 30.288951, longitude: -97.724012 },
-    "J. Frank Dobie Garage": { latitude: 30.283927, longitude: -97.740254 },
-    "J. Frank Dobie House": { latitude: 30.286274, longitude: -97.736765 },
-    "Larry R. Faulkner Nano Sci and Tech": { latitude: 30.288363, longitude: -97.735975 },
-    "Flammable Storage Building": { latitude: 30.287167, longitude: -97.737132 },
-    "Traffic Kiosk - 214 1/2 W 24th St": { latitude: 30.292272, longitude: -97.742236 },
-    "Garrison Hall": { latitude: 30.285770, longitude: -97.739073 },
-    "Gates Dell Complex": { latitude: 30.28633, longitude: -97.73630 },
-    "Mary E. Gearing Hall": { latitude: 30.287234, longitude: -97.738027 },
-    "Dorothy L. Gebauer Building": { latitude: 30.284653, longitude: -97.738206 },
-    "Graduate Housing, Unit A": { latitude: 30.283097, longitude: -97.732803 },
-    "Graduate Housing, Unit B": { latitude: 30.283163, longitude: -97.732740 },
-    "Graduate Housing, Unit C": { latitude: 30.283195, longitude: -97.732663 },
-    "Graduate Housing, Unit D": { latitude: 30.283241, longitude: -97.732570 },
-    "Graduate Housing, Unit E": { latitude: 30.283289, longitude: -97.732491 },
-    "Graduate Housing, Unit F": { latitude: 30.283340, longitude: -97.732411 },
-    "Gary L Thomas Energy Engr Bldg": { latitude: 30.288560, longitude: -97.735570 },
-    "Goldsmith Hall": { latitude: 30.286789, longitude: -97.740362 },
-    "Gregory Aquatic Pool Control Bldg.": { latitude: 30.284068, longitude: -97.736829 },
-    "Gregory Gymnasium": { latitude: 30.283572, longitude: -97.736495 },
-    "Gregory Aquatic Food Service Bldg.": { latitude: 30.284114, longitude: -97.736950 },
-    "Gregory Aquatic Pool Equip. Bldg.": { latitude: 30.284245, longitude: -97.736966 },
-    "Gregory Aquatic Pool Storage Bldg.": { latitude: 30.284269, longitude: -97.736975 },
-    "Graduate School of Business Bldg.": { latitude: 30.284153, longitude: -97.737939 },
-    "Graduate Housing, Maintenance Bldg": { latitude: 30.283380, longitude: -97.732353 },
-    "Guadalupe Garage": { latitude: 30.291295, longitude: -97.738518 },
-    "Gordon-White Building": { latitude: 30.284770, longitude: -97.739720 },
-    "Health Center Garage": { latitude: 30.292883, longitude: -97.736672 },
-    "Health Discovery Building": { latitude: 30.284615, longitude: -97.732639 },
-    "Health Learning Building": { latitude: 30.284417, longitude: -97.731603 },
-    "Hogg Memorial Auditorium": { latitude: 30.285146, longitude: -97.739436 },
-    "Harry Ransom Center": { latitude: 30.284209, longitude: -97.741256 },
-    "Rainey Hall": { latitude: 30.285099, longitude: -97.738317 },
-    "William Randolph Hearst Bldg": { latitude: 30.284177, longitude: -97.735419 },
-    "Health Transformation Building": { latitude: 30.284431, longitude: -97.731314 },
-    "2815 San Gabriel (IC2 Institute)": { latitude: 30.301543, longitude: -97.749887 },
-    "Intramural Control Bldg.": { latitude: 30.299140, longitude: -97.719917 },
-    "Intramural Maint Bldg A": { latitude: 30.298999, longitude: -97.719005 },
-    "Intramural Maint Bldg B": { latitude: 30.299010, longitude: -97.719081 },
-    "Indoor Practice Facility": { latitude: 30.277847, longitude: -97.728726 },
-    "Jester Residence Hall": { latitude: 30.282654, longitude: -97.736765 },
-    "Beauford H. Jester Center": { latitude: 30.282654, longitude: -97.736765 },
-    "Jackson Geological Sciences Bldg.": { latitude: 30.286190, longitude: -97.736370 },
-    "John W. Hargis Hall": { latitude: 30.281406, longitude: -97.733877 },
-    "Jesse H. Jones Hall": { latitude: 30.289305, longitude: -97.736970 },
-    "Kinsolving Residence Hall": { latitude: 30.289104, longitude: -97.741912 },
-    "Lake Austin Centre": { latitude: 30.298775, longitude: -97.771865 },
-    "Lyndon B Johnson Library": { latitude: 30.285750, longitude: -97.729200 },
-    "Littlefield Carriage House": { latitude: 30.284208, longitude: -97.739624 },
-    "Longhorn Dining Facility": { latitude: 30.284481, longitude: -97.736667 },
-    "Littlefield Home": { latitude: 30.284253, longitude: -97.739513 },
-    "Living Learning Hall A": { latitude: 30.288055, longitude: -97.730977 },
-    "Living Learning Hall B": { latitude: 30.288119, longitude: -97.730993 },
-    "Living Learning Hall C": { latitude: 30.288169, longitude: -97.731002 },
-    "Living Learning Hall D": { latitude: 30.288236, longitude: -97.731015 },
-    "Living Learning Hall E": { latitude: 30.288288, longitude: -97.731024 },
-    "Living Learning Hall F": { latitude: 30.288363, longitude: -97.731038 },
-    "Leona St. Child Development Center": { latitude: 30.288101, longitude: -97.720874 },
-    "Landscape Services Storage Bldg.": { latitude: 30.287224, longitude: -97.735928 },
-    "Littlefield Residence Hall": { latitude: 30.287189, longitude: -97.741853 },
-    "Laboratory Theater Bldg.": { latitude: 30.286177, longitude: -97.737387 },
-    "Manor Garage": { latitude: 30.282402, longitude: -97.730739 },
-    "Main Building (UT Tower)": { latitude: 30.286055, longitude: -97.739362 },
-    "Moffett Molecular Biology Bldg.": { latitude: 30.287129, longitude: -97.736643 },
-    "Moody Center": { latitude: 30.280259, longitude: -97.733345 },
-    "Mezes Hall": { latitude: 30.285444, longitude: -97.738910 },
-    "Richard Mithoff Trk/Scr Fieldhouse": { latitude: 30.278864, longitude: -97.729143 },
-    "Moore-Hill Residence Hall": { latitude: 30.284809, longitude: -97.735484 },
-    "Mike A.Myers Track & Soccer Stadium": { latitude: 30.282466, longitude: -97.729668 },
-    "Moncrief-Neuhaus Athletic Center": { latitude: 30.283026, longitude: -97.732542 },
-    "Music Building & Recital Hall": { latitude: 30.285703, longitude: -97.738264 },
-    "2207 Comal (Mail Service Building)": { latitude: 30.280157, longitude: -97.726601 },
-    "Material Transfer Center": { latitude: 30.287184, longitude: -97.737184 },
-    "2400 Nueces": { latitude: 30.294311, longitude: -97.746803 },
-    "North End Zone Building": { latitude: 30.284345, longitude: -97.732143 },
-    "Norman Hackerman Building": { latitude: 30.286887, longitude: -97.736242 },
-    "Neural and Molecular Science Bldg.": { latitude: 30.287358, longitude: -97.736137 },
-    "Nueces Garage": { latitude: 30.294158, longitude: -97.747459 },
-    "Nursing School": { latitude: 30.289272, longitude: -97.732619 },
-    "Power Plant Annex Storehouse # 1": { latitude: 30.284470, longitude: -97.735412 },
-    "Power Plant Annex Storehouse #3-WD": { latitude: 30.284573, longitude: -97.735447 },
-    "Power Plant Annex Storehouse #4-MET": { latitude: 30.284695, longitude: -97.735471 },
-    "Performing Arts Center": { latitude: 30.286041, longitude: -97.731347 },
-    "T.S. Painter Hall": { latitude: 30.285007, longitude: -97.736757 },
-    "Parlin Hall": { latitude: 30.285689, longitude: -97.738703 },
-    "J.T. Patterson Labs.Bldg.": { latitude: 30.285504, longitude: -97.736153 },
-    "Power Plant Aux. Bldg.# 2": { latitude: 30.284670, longitude: -97.735567 },
-    "Power Plant Aux. Bldg.# 5": { latitude: 30.284894, longitude: -97.735617 },
-    "Power Plant Aux. Bldg.# 6": { latitude: 30.285107, longitude: -97.735673 },
-    "Roberts Residence Hall": { latitude: 30.287418, longitude: -97.741143 },
-    "Rowling Hall Garage": { latitude: 30.283355, longitude: -97.739039 },
-    "Patton Hall": { latitude: 30.285178, longitude: -97.736634 },
-    "Robert B. Rowling Hall": { latitude: 30.283425, longitude: -97.738881 },
-    "Recreational Sports Center": { latitude: 30.284849, longitude: -97.734466 },
-    "San Antonio Garage": { latitude: 30.288446, longitude: -97.742456 },
-    "Red and Charline McCombs Field": { latitude: 30.277261, longitude: -97.727901 },
-    "Sarah M. & Charles E. Seay Building": { latitude: 30.292939, longitude: -97.740664 },
-    "South End Zone": { latitude: 30.281923, longitude: -97.728828 },
-    "San Jacinto Garage": { latitude: 30.287671, longitude: -97.732928 },
-    "San Jacinto Residence Hall": { latitude: 30.284872, longitude: -97.734875 },
-    "Dell Seton Medical Center at UT": { latitude: 30.277383, longitude: -97.729986 },
-    "Telecomm.Svc.Satellite Ops Facility": { latitude: 30.284940, longitude: -97.734928 },
-    "Sid Richardson Hall": { latitude: 30.282046, longitude: -97.734987 },
-    "Student Services Building": { latitude: 30.290185, longitude: -97.738483 },
-    "School of Social Work Building": { latitude: 30.280363, longitude: -97.732523 },
-    "Darrell K Royal Tx Memorial Stadium": { latitude: 30.283649, longitude: -97.732547 },
-    "2617 Speedway (OFC.BLDG.)": { latitude: 30.289070, longitude: -97.734636 },
-    "Speedway Garage": { latitude: 30.291132, longitude: -97.737171 },
-    "George I. Sanchez Building": { latitude: 30.283753, longitude: -97.734210 },
-    "Joe C Thompson Conference Center": { latitude: 30.286236, longitude: -97.740720 },
-    "Texas Cowboys Pavilion": { latitude: 30.293178, longitude: -97.735626 },
-    "Texas Longhorns Boathouse": { latitude: 30.246286, longitude: -97.726731 },
-    "Tx Science & Natural History Museum": { latitude: 30.287027, longitude: -97.732383 },
-    "Townes Hall": { latitude: 30.289247, longitude: -97.736097 },
-    "Trinity Garage": { latitude: 30.278868, longitude: -97.733474 },
-    "UTM Thermal Storage 1": { latitude: 30.292838, longitude: -97.732693 },
-    "UTM Thermal Storage 2": { latitude: 30.293105, longitude: -97.732718 },
-    "Texas Tennis Center": { latitude: 30.285963, longitude: -97.728176 },
-    "University Key Building": { latitude: 30.286070, longitude: -97.735347 },
-    "Univ. Interscholastic League Bldg.": { latitude: 30.284086, longitude: -97.734749 },
-    "Union Building": { latitude: 30.286634, longitude: -97.741159 },
-    "University Police Building": { latitude: 30.283972, longitude: -97.730365 },
-    "UT Administration Building": { latitude: 30.286960, longitude: -97.736978 },
-    "University Teaching Center": { latitude: 30.286193, longitude: -97.740330 },
-    "Etter-Harbin Alumni Center": { latitude: 30.284451, longitude: -97.733444 },
-    "KVRX Transmitter Twr & Cntrl Bldg": { latitude: 30.336153, longitude: -97.715874 },
-    "Waggener Hall": { latitude: 30.286449, longitude: -97.738846 },
-    "Arthur P. Watson House": { latitude: 30.285359, longitude: -97.738494 },
-    "Will C. Hogg Bldg.": { latitude: 30.285012, longitude: -97.737494 },
-    "William C. Powers, Jr. SAC": { latitude: 30.285844, longitude: -97.741662 },
-    "Waller Creek Control Station": { latitude: 30.281252, longitude: -97.732871 },
-    "Robert A. Welch Hall": { latitude: 30.286559, longitude: -97.737837 },
-    "Whitaker Gateway Building": { latitude: 30.287957, longitude: -97.736622 },
-    "F.L. Winship Drama Bldg.": { latitude: 30.285534, longitude: -97.738267 },
-    "West Mall Office Bldg.": { latitude: 30.288630, longitude: -97.739748 },
-    "Walter Webb Hall": { latitude: 30.286576, longitude: -97.739615 }
+    "Almetris Duren Residence Hall": { latitude: 30.29147797170537, longitude:-97.74018424787246 },
+    "Anna Hiss Gymnasium": { latitude: 330.288527598330045, longitude:-97.73789459801412 },
+    "Arno Nowotny Building": { latitude: 30.27823917197153, longitude:-97.73103341531434 },
+    "Andrews Residence Hall": { latitude: 30.288188063377394, longitude:-97.73990065273168 },
+    "Art Building and Museum": { latitude: 30.28589159767631, longitude:-97.73296363670158 },      
+    "Aerospace Engineering Building": {
+      "latitude": 30.291084300484847,
+      "longitude": -97.73754029183225
+  },
+  "AT&T Executive Education & Conf Center": {
+      "latitude": 30.28167088456957,
+      "longitude": -97.74052409966893
+  },
+  "Batts Hall": {
+      "latitude": 30.284856311597967,
+      "longitude": -97.73897052409022
+  },
+  "L. Theo Bellmont Hall": {
+      "latitude": 30.283877259795123,
+      "longitude": -97.7337058926767
+  },
+  "Benedict Hall": {
+      "latitude": 30.284002665315118,
+      "longitude": -97.73907106308069
+  },
+  "Biological Sciences Greenhouses": {
+      "latitude": 30.286994216555062,
+      "longitude": -97.73864623288863
+  },
+  "Brackenridge Residence Hall": {
+      "latitude": 30.28319044921991,
+      "longitude": -97.73590929412036
+  },
+  "Biological Laboratories": {
+      "latitude": 30.287282839337962,
+      "longitude": -97.73985076283367
+  },
+  "Blanton Residence Hall": {
+      "latitude": 30.28854836052204,
+      "longitude": -97.73944140667066
+  },
+  "Jack S. Blanton Museum of Art": {
+      "latitude": 30.280803265283673,
+      "longitude": -97.73778685466544
+  },
+  "Biomedical Engineering Building": {
+      "latitude": 30.289392439534073,
+      "longitude": -97.73870853569929
+  },
+  "Blanton Museum Ellsworth Kelly": {
+      "latitude": 30.281736320778805,
+      "longitude": -97.73782080559269
+  },
+  "Blanton Museum Smith Building": {
+      "latitude": 30.281142644253165,
+      "longitude": -97.73819192227114
+  },
+  "Biological Greenhouse": {
+      "latitude": 30.287192559609426,
+      "longitude": -97.73975880549379
+  },
+  "Bernard and Audre Rapoport Building": {
+      "latitude": 30.285238905871132,
+      "longitude": -97.73676220971105
+  },
+  "Brazos Garage": {
+      "latitude": 30.281261114921172,
+      "longitude": -97.73646381865429
+  },
+  "Basketball Support Building (Rec Sport)": {
+      "latitude": 30.281437676691283,
+      "longitude": -97.73543426313961
+  },
+  "Battle Hall": {
+      "latitude": 30.28540863600708,
+      "longitude": -97.74024336438706
+  },
+  "Burdine Hall": {
+      "latitude": 30.288825492505286,
+      "longitude": -97.7382218635489
+  },
+  "Calhoun Hall": {
+      "latitude": 30.284490114866717,
+      "longitude": -97.74015576573126
+  },
+  "College of Business Administration": {
+      "latitude": 30.284230414158912,
+      "longitude": -97.73783618234405
+  },
+  "Connally Center for Justice": {
+      "latitude": 30.28813305409281,
+      "longitude": -97.7305000898182
+  },
+  "Comal Child Development Center Annex": {
+      "latitude": 30.282930305558796,
+      "longitude": -97.72566150269505
+  },
+  "Collections Deposit Library": {
+      "latitude": 30.278748128534467,
+      "longitude": -97.73296978717721
+  },
+  "Caven Clark Field Support Building": {
+      "latitude": 30.28163382282598,
+      "longitude": -97.73486649002972
+  },
+  "Caven Lacrosse and Sports Center": {
+      "latitude": 30.281074112122337,
+      "longitude": -97.73467329337403
+  },
+  "Jesse H. Jones Comm. Center (Bldg. A)": {
+      "latitude": 30.289362294783572,
+      "longitude": -97.74079560881131
+  },
+  "Jesse H. Jones Comm. Center (Bldg. B)": {
+      "latitude": 30.289255922784104,
+      "longitude": -97.74124228690916
+  },
+  "Chemical and Petroleum Engineering": {
+      "latitude": 30.2900850488705,
+      "longitude": -97.73649406673027
+  },
+  "Carothers Residence Hall": {
+      "latitude": 30.2886845689789,
+      "longitude": -97.74008689777295
+  },
+  "Creekside Residence Hall": {
+      "latitude": 30.28849180938197,
+      "longitude": -97.73305653893733
+  },
+  "Dobie Twenty21": {
+      "latitude": 30.28331717704246,
+      "longitude": -97.74148745479317
+  },
+  "E. William Doty Fine Arts Building": {
+      "latitude": 30.285953762258888,
+      "longitude": -97.73190450145925
+  },
+  "UFCU Disch-Falk Field": {
+      "latitude": 30.279717481443107,
+      "longitude": -97.72629471375957
+  },
+  "G. B. Dealey Center for New Media": {
+      "latitude": 30.29028479565082,
+      "longitude": -97.74092700701313
+  },
+  "Dell Pediatric Research Institute": {
+      "latitude": 30.304814730397464,
+      "longitude": -97.70411742979068
+  },
+  "Dinosaur Trackway Bldg.": {
+      "latitude": 30.28731506727763,
+      "longitude": -97.73222574854705
+  },
+  "Ernest Cockrell Jr. Hall": {
+      "latitude": 30.28893139204794,
+      "longitude": -97.73552350166929
+  },
+  "Engr Education and Research Center": {
+      "latitude": 30.288080508333845,
+      "longitude": -97.73555188368478
+  },
+  "E.P. Schoch Building": {
+      "latitude": 30.285775739480957,
+      "longitude": -97.73680597817727
+  },
+  "Engineering Teaching Center II": {
+      "latitude": 30.289878471243473,
+      "longitude": -97.73550435085704
+  },
+  "Peter T. Flawn Academic Center": {
+      "latitude": 30.28634469496842,
+      "longitude": -97.74026855155067
+  },
+  "Larry R. Faulkner Nano Sci and Tech": {
+      "latitude": 30.28789758740698,
+      "longitude": -97.73801543418834
+  },
+  "Garrison Hall": {
+      "latitude": 30.2851934758194,
+      "longitude": -97.73861941613757
+  },
+  "Gates Dell Complex": {
+      "latitude": 30.286250665637812,
+      "longitude": -97.73666519543949
+  },
+  "Mary E. Gearing Hall": {
+      "latitude": 30.287798183310578,
+      "longitude": -97.73919916100894
+  },
+  "Dorothy L. Gebauer Building": {
+      "latitude": 30.284806917050624,
+      "longitude": -97.73551007589859
+  },
+  "Gary L Thomas Energy Engr Bldg": {
+      "latitude": 30.287473582230742,
+      "longitude": -97.73620750852744
+  },
+  "Goldsmith Hall": {
+      "latitude": 30.285261574955296,
+      "longitude": -97.74125618308841
+  },
+  "Gregory Gymnasium": {
+      "latitude": 30.284216714390805,
+      "longitude": -97.73672941020796
+  },
+  "Graduate School of Business Bldg.": {
+      "latitude": 30.284140645977175,
+      "longitude": -97.7384496781887
+  },
+  "Gordon-White Building": {
+      "latitude": 30.287737395328808,
+      "longitude": -97.74000581469157
+  },
+  "Hogg Memorial Auditorium": {
+      "latitude": 30.286884873910775,
+      "longitude": -97.74053539477013
+  },
+  "Harry Ransom Center": {
+      "latitude": 30.284307270058157,
+      "longitude": -97.74124390631127
+  },
+  "Rainey Hall": {
+      "latitude": 30.28400238705177,
+      "longitude": -97.74020841541176
+  },
+  "William Randolph Hearst Bldg": {
+      "latitude": 30.288981089912237,
+      "longitude": -97.7407440516336
+  },
+  "Indoor Practice Facility": {
+      "latitude": 30.286262045855892,
+      "longitude": -97.72656327019568
+  },
+  "Jester Residence Hall": {
+      "latitude": 30.28285855460658,
+      "longitude": -97.73672762937656
+  },
+  "Jackson Geological Sciences Bldg.": {
+      "latitude": 30.28605702186507,
+      "longitude": -97.73672190368904
+  },
+  "John W. Hargis Hall": {
+      "latitude": 30.27844985326865,
+      "longitude": -97.73196281252262
+  },
+  "Jesse H. Jones Hall": {
+      "latitude": 30.288669164721796,
+      "longitude": -97.73169730259482
+  },
+  "Kinsolving Residence Hall": {
+      "latitude": 30.290371647111446,
+      "longitude": -97.73994143645014
+  },
+  "Lake Austin Centre": {
+      "latitude": 30.2850301534285,
+      "longitude": -97.77869877392155
+  },
+  "Lyndon B Johnson Library": {
+      "latitude": 30.285782228846774,
+      "longitude": -97.72911063086322
+  },
+  "Longhorn Dining Facility": {
+      "latitude": 30.2825656986202,
+      "longitude": -97.7359204190121
+  },
+  "Littlefield Home": {
+      "latitude": 30.288037757982462,
+      "longitude": -97.74077150913918
+  },
+  "Littlefield Residence Hall": {
+      "latitude": 30.289309370629493,
+      "longitude": -97.73972045711004
+  },
+  "Laboratory Theater Bldg.": {
+      "latitude": 30.285898238944625,
+      "longitude": -97.73517080307086
+  },
+  "Main Building (UT Tower)": {
+      "latitude": 30.286061568435674,
+      "longitude": -97.73937157223914
+  },
+  "Moffett Molecular Biology Bldg.": {
+      "latitude": 30.28849216028356,
+      "longitude": -97.73719691263362
+  },
+  "Moody Center": {
+      "latitude": 30.280795346215452,
+      "longitude": -97.73072517317165
+  },
+  "Mezes Hall": {
+      "latitude": 30.28436432960496,
+      "longitude": -97.73914050201421
+  },
+  "Richard Mithoff Trk/Scr Fieldhouse": {
+      "latitude": 30.282011271496,
+      "longitude": -97.73133997717582
+  },
+  "Moore-Hill Residence Hall": {
+      "latitude": 30.28351254994515,
+      "longitude": -97.73554726177733
+  },
+  "Mike A.Myers Track & Soccer Stadium": {
+      "latitude": 30.282551780282006,
+      "longitude": -97.73024202235698
+  },
+  "Moncrief-Neuhaus Athletic Center": {
+      "latitude": 30.282440445269337,
+      "longitude": -97.73235015398075
+  },
+  "Music Building & Recital Hall": {
+      "latitude": 30.287414090278748,
+      "longitude": -97.7311761216976
+  },
+  "2400 Nueces": {
+      "latitude": 30.28810826207928,
+      "longitude": -97.74325931820213
+  },
+  "Norman Hackerman Building": {
+      "latitude": 30.287560688036134,
+      "longitude": -97.73803556535555
+  },
+  "Neural and Molecular Science Bldg.": {
+      "latitude": 30.28852276948697,
+      "longitude": -97.73723830870857
+  },
+  "Nursing School": {
+      "latitude": 30.277626862818003,
+      "longitude": -97.73337874763801
+  },
+  "Performing Arts Center": {
+      "latitude": 30.28612654248057,
+      "longitude": -97.7312760019542
+  },
+  "T.S. Painter Hall": {
+      "latitude": 30.28708511820956,
+      "longitude": -97.73862580925211
+  },
+  "Parlin Hall": {
+      "latitude": 30.28489947221559,
+      "longitude": -97.74009954359833
+  },
+  "J.T. Patterson Labs.Bldg.": {
+      "latitude": 30.288006614876767,
+      "longitude": -97.73647612612335
+  },
+  "Roberts Residence Hall": {
+      "latitude": 30.283085364742586,
+      "longitude": -97.7351945090296
+  },
+  "Robert B. Rowling Hall": {
+      "latitude": 30.281833916936254,
+      "longitude": -97.74126101591094
+  },
+  "Recreational Sports Center": {
+      "latitude": 30.281498844623947,
+      "longitude": -97.73287453564726
+  },
+  "Red and Charline McCombs Field": {
+      "latitude": 30.28068484480533,
+      "longitude": -97.725065286775
+  },
+  "Sarah M. & Charles E. Seay Building": {
+      "latitude": 30.289714850767016,
+      "longitude": -97.73719423350087
+  },
+  "San Jacinto Residence Hall": {
+      "latitude": 30.28272556499296,
+      "longitude": -97.73447119393859
+  },
+  "Sid Richardson Hall": {
+      "latitude": 30.285713187452142,
+      "longitude": -97.7286950609824
+  },
+  "Darrell K Royal Tx Memorial Stadium": {
+      "latitude": 30.283531405787446,
+      "longitude": -97.73247404659284
+  },
+  "George I. Sanchez Building": {
+      "latitude": 30.281759974909786,
+      "longitude": -97.73881842540048
+  },
+  "Joe C Thompson Conference Center": {
+      "latitude": 30.287273392606426,
+      "longitude": -97.7291707677285
+  },
+  "Texas Cowboys Pavilion": {
+      "latitude": 30.285033362780712,
+      "longitude": -97.73403808981838
+  },
+  "Tx Science & Natural History Museum": {
+      "latitude": 30.286992596082854,
+      "longitude": -97.73232940237992
+  },
+  "Townes Hall": {
+      "latitude": 30.2888898088201,
+      "longitude": -97.7312077790011
+  },
+  "Texas Tennis Center": {
+      "latitude": 30.281297074910043,
+      "longitude": -97.72594192540045
+  },
+  "Univ. Interscholastic League Bldg.": {
+      "latitude": 30.283261450869446,
+      "longitude": -97.72367508981839
+  },
+  "Union Building": {
+      "latitude": 30.28648381040214,
+      "longitude": -97.74079646098231
+  },
+  "University Teaching Center": {
+      "latitude": 30.283112001922266,
+      "longitude": -97.73881866159797
+  },
+  "Etter-Harbin Alumni Center": {
+      "latitude": 30.284022663353863,
+      "longitude": -97.73426426772859
+  },
+  "Waggener Hall": {
+      "latitude": 30.285045232540963,
+      "longitude": -97.73755145201986
+  },
+  "Will C. Hogg Bldg.": {
+      "latitude": 30.28620966129609,
+      "longitude": -97.73865162879729
+  },
+  "William C. Powers Jr. SAC": {
+      "latitude": 30.284860295013427,
+      "longitude": -97.73672037388758
+  },
+  "Robert A. Welch Hall": {
+      "latitude": 30.286748078870446,
+      "longitude": -97.73795345478007
+  },
+  "F.L. Winship Drama Bldg.": {
+      "latitude": 30.285708043963,
+      "longitude": -97.73457240972647
+  },
+  "Walter Webb Hall": {
+      "latitude": 30.289189925808756,
+      "longitude": -97.74165431357689
+  },
+  "Perry-Casta\u00f1eda Library": {
+      "latitude": 30.28264295083686,
+      "longitude": -97.73821375542367
+  },
+  "Alexander Architectural Archives": {
+      "latitude": 30.285376785761592,
+      "longitude": -97.74019805373607
+  },
+  "Architecture and Planning Library": {
+      "latitude": 30.285266117720123,
+      "longitude": -97.7407266076093
+  },
+  "Classics Library": {
+      "latitude": 30.28499055447616,
+      "longitude": -97.7376133987705
+  },
+  "McKinney Engineering Library": {
+      "latitude": 30.287991266781184,
+      "longitude": -97.73515508856333
+  },
+  "Fine Arts Library": {
+      "latitude": 30.285862983425826,
+      "longitude": -97.73175749155757
+  },
+  "Walter Geology Library": {
+      "latitude": 30.285887579946635,
+      "longitude": -97.73571285868421
+  },
+  "Life Science Library": {
+      "latitude": 30.28612867332608,
+      "longitude": -97.739370384781
+  },
+  "Physics Mathematics Astronomy Library": {
+      "latitude": 30.289023940028738,
+      "longitude": -97.73646246453973
+  },
+  "Dolph Briscoe Center for American History": {
+      "latitude": 30.2852231241747,
+      "longitude": -97.7288015278824
+  },
+  "Stark Center for Physical Culture and Sports": {
+      "latitude": 30.28495448331701,
+      "longitude": -97.7330102314175
+  },
+  "Tarlton Law Library": {
+      "latitude": 30.288539991451202,
+      "longitude": -97.73068469477634
+  }
   }
 };
   

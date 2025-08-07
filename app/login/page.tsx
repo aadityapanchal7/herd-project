@@ -35,8 +35,6 @@ export default function LoginPage() {
       const success = await login(formData.email, formData.password)
       if (success) {
         toast({
-          title: "Login successful",
-          description: "Welcome back to Herd!",
         })
         router.push("/dashboard")
       } else {
