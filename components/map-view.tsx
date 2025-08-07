@@ -244,7 +244,8 @@ export default function MapView({ schoolKey }: { schoolKey?: string }) {
 
   // Map center fallback
   const center: [number, number] = (MAP_CENTERS[schoolKey ?? "ut_austin"] ?? [30.2861, -97.7394]) as any;
-  const zoom = 14;
+  const zoom = 14
+  ;
 
   return (
     <>

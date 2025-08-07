@@ -72,30 +72,29 @@ export interface EventWithCoords extends Event {
 
 interface LeafletMapProps {
   center: [number, number];
-  zoom: number;
+  zoom: number;            // initial zoom for the map
   events: EventWithCoords[];
   selectedEvents: EventWithCoords[];
   selectedEvent?: EventWithCoords;
   onEventSelect: (evt: EventWithCoords) => void;
 }
 
+// FlyToSelected now uses a hardcoded zoom level when a marker is clicked
 function FlyToSelected({
   selectedEvent,
-  zoom,
 }: {
   selectedEvent?: EventWithCoords;
-  zoom: number;
 }) {
   const map = useMap();
   useEffect(() => {
     if (selectedEvent) {
       map.flyTo(
         [selectedEvent.latitude, selectedEvent.longitude],
-        zoom,
+        17, // Hardcoded zoom on click
         { animate: true }
       );
     }
-  }, [selectedEvent, zoom, map]);
+  }, [selectedEvent, map]);
   return null;
 }
 
@@ -153,7 +152,7 @@ export default function LeafletMap({
           );
         })}
 
-        <FlyToSelected selectedEvent={selectedEvent} zoom={zoom} />
+        <FlyToSelected selectedEvent={selectedEvent} />
       </MapContainer>
 
       {/* Icons8 attribution, bottom‑left */}
