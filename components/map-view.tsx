@@ -10,6 +10,8 @@ import { useAuth } from "@/context/auth-context";
 import { useToast } from "@/components/ui/use-toast";
 import type { Event } from "@/lib/types";
 import { Button } from "@/components/ui/button";
+import { AvatarThumb } from "@/components/avatar-thumb";
+
 
 // Dynamically import LeafletMap (no SSR)
 const LeafletMap = dynamic(() => import("@/components/leaflet-map"), {
@@ -471,7 +473,7 @@ export default function MapView({ schoolKey }: { schoolKey?: string }) {
                     value={attendeeSearch}
                     onChange={e => setAttendeeSearch(e.target.value)}
                   />
-                  {loadingAttendees ? (
+                   {loadingAttendees ? (
                     <div>Loading…</div>
                   ) : filteredAttendees.length === 0 ? (
                     <div className="text-gray-500 text-sm">No one has RSVP'd yet.</div>
@@ -479,28 +481,13 @@ export default function MapView({ schoolKey }: { schoolKey?: string }) {
                     <ul className="space-y-3 max-h-64 overflow-y-auto">
                       {filteredAttendees.map((a, idx) => (
                         <li key={idx} className="flex items-center gap-3">
-                          {a.attendee_avatar_url ? (
-                            <img
-                              src={a.attendee_avatar_url}
-                              alt={`${a.attendee_first} ${a.attendee_last}`}
-                              className="w-8 h-8 rounded-full object-cover border"
-                              onError={e => (e.currentTarget.src = "/ut-default-avatar.jpg")}
-                            />
-                          ) : (
-                            <div
-                              className="w-8 h-8 rounded-full flex items-center justify-center font-semibold text-white"
-                              style={{
-                                backgroundColor: "var(--primary-color)",
-                                fontSize: 14,
-                              }}
-                            >
-                              {a.attendee_first[0]?.toUpperCase()}
-                              {a.attendee_last[0]?.toUpperCase()}
-                            </div>
-                          )}
-                          <span>
-                            {a.attendee_first} {a.attendee_last}
-                          </span>
+                          <AvatarThumb
+                            url={a.attendee_avatar_url}
+                            first={a.attendee_first}
+                            last={a.attendee_last}
+                            size={32}
+                          />
+                          <span>{a.attendee_first} {a.attendee_last}</span>
                         </li>
                       ))}
                     </ul>

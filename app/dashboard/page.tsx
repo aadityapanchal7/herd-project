@@ -44,18 +44,24 @@ export default function DashboardPage() {
     [events]
   );
 
-  // 2) Recommended: random subset of up to 3 within the next 7 days
+  // 2) Recommended: up to 3 within the next 7 days,
+  //    EXCLUDING events the user has already RSVPd to
   const recommendedThisWeek = useMemo(() => {
     const oneWeekLater = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
-    // shuffle
-    const shuffled = [...upcomingEvents].sort(() => Math.random() - 0.5);
+
+    // remove already-RSVPd events
+    const notRsvpd = upcomingEvents.filter((e) => !userRsvps.includes(e.id));
+
+    // shuffle the remaining and take only those within the next week
+    const shuffled = [...notRsvpd].sort(() => Math.random() - 0.5);
+
     return shuffled
       .filter((e) => {
         const d = new Date(e.date);
         return d >= today && d <= oneWeekLater;
       })
       .slice(0, 3);
-  }, [upcomingEvents]);
+  }, [upcomingEvents, userRsvps]);
 
   // 3) Your scheduled events: any upcoming event you've RSVPd to
   const scheduledEvents = useMemo(
@@ -89,7 +95,7 @@ export default function DashboardPage() {
         </div>
         {recommendedThisWeek.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
-            {recommendedThisWeek.map((evt) => (
+            {recommendedThisWeek.map((evt: Event) => (
               <EventCard key={evt.id} event={evt} />
             ))}
           </div>
@@ -109,7 +115,7 @@ export default function DashboardPage() {
         </div>
         {scheduledEvents.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {scheduledEvents.map((evt) => (
+            {scheduledEvents.map((evt: Event) => (
               <EventCard key={evt.id} event={evt} />
             ))}
           </div>

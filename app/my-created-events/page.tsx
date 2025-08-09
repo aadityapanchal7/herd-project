@@ -22,7 +22,7 @@ export default function MyCreatedEventsPage() {
   const [filteredEvents, setFilteredEvents] = useState<Event[]>([])
   const [loadingEvents, setLoadingEvents] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
-  const [sortOption, setSortOption] = useState("date-asc")
+  const [sortOption, setSortOption] = useState<"date-asc" | "date-desc" | "title-asc" | "title-desc">("date-asc")
   const router = useRouter()
   const { toast } = useToast()
 
@@ -48,16 +48,17 @@ export default function MyCreatedEventsPage() {
       try {
         const { data, error } = await supabase
           .from("events")
-          .select("*")
+          .select(
+            // explicitly include is_private so EventCardCreator can show the pill
+            "id,title,category,description,date,time,location,max_attendees,creator_name,verified,is_private"
+          )
           .eq("created_by", user.id)
           .order("date", { ascending: true })
 
-        if (error) {
-          throw error
-        }
+        if (error) throw error
 
-        setCreatedEvents(data || [])
-        setFilteredEvents(data || [])
+        setCreatedEvents((data as unknown as Event[]) || [])
+        setFilteredEvents((data as unknown as Event[]) || [])
       } catch (error) {
         console.error("Error fetching created events:", error)
         toast({
@@ -77,24 +78,21 @@ export default function MyCreatedEventsPage() {
     }
   }, [isAuthenticated, user, toast])
 
-  // Filter and sort events when search query or sort option changes
+  // Filter + sort
   useEffect(() => {
     if (!createdEvents.length) return
 
     let filtered = [...createdEvents]
 
-    // Apply search filter
     if (searchQuery) {
-      const query = searchQuery.toLowerCase()
-      filtered = filtered.filter(
-        (event) =>
-          event.title.toLowerCase().includes(query) ||
-          event.description.toLowerCase().includes(query) ||
-          event.location.toLowerCase().includes(query),
+      const q = searchQuery.toLowerCase()
+      filtered = filtered.filter((e) =>
+        e.title.toLowerCase().includes(q) ||
+        e.description.toLowerCase().includes(q) ||
+        e.location.toLowerCase().includes(q)
       )
     }
 
-    // Apply sorting
     switch (sortOption) {
       case "date-asc":
         filtered.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
@@ -113,13 +111,13 @@ export default function MyCreatedEventsPage() {
     setFilteredEvents(filtered)
   }, [searchQuery, sortOption, createdEvents])
 
-  // Group events by upcoming and past
+  // Group by upcoming/past
   const now = new Date()
-  const upcomingEvents = filteredEvents.filter((event) => new Date(event.date) >= now)
-  const pastEvents = filteredEvents.filter((event) => new Date(event.date) < now)
+  const upcomingEvents = filteredEvents.filter((e) => new Date(e.date) >= now)
+  const pastEvents = filteredEvents.filter((e) => new Date(e.date) < now)
 
   const handleEventDeleted = (eventId: number) => {
-    setCreatedEvents(prev => prev.filter(event => event.id !== eventId))
+    setCreatedEvents((prev) => prev.filter((e) => e.id !== eventId))
   }
 
   if (authLoading || loadingEvents) {
@@ -136,11 +134,9 @@ export default function MyCreatedEventsPage() {
             <Skeleton className="h-10 w-40" />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {Array(6)
-              .fill(0)
-              .map((_, i) => (
-                <Skeleton key={i} className="h-64 rounded-xl" />
-              ))}
+            {Array(6).fill(0).map((_, i) => (
+              <Skeleton key={i} className="h-64 rounded-xl" />
+            ))}
           </div>
         </main>
       </div>
@@ -156,6 +152,7 @@ export default function MyCreatedEventsPage() {
           <p className="mt-2 text-white/80">Manage all the events you've created</p>
         </div>
       </div>
+
       <main className="flex-1 container max-w-6xl mx-auto py-10 px-4">
         {createdEvents.length > 0 ? (
           <>
@@ -171,7 +168,7 @@ export default function MyCreatedEventsPage() {
               </div>
               <div className="flex gap-2 items-center">
                 <Filter className="h-4 w-4 text-gray-500" />
-                <Select value={sortOption} onValueChange={setSortOption}>
+                <Select value={sortOption} onValueChange={(v: typeof sortOption) => setSortOption(v)}>
                   <SelectTrigger className="w-[180px] bg-white">
                     <SelectValue placeholder="Sort by" />
                   </SelectTrigger>
@@ -182,9 +179,9 @@ export default function MyCreatedEventsPage() {
                     <SelectItem value="title-desc">Title (Z-A)</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button 
+                <Button
                   className="university-button university-button:hover text-white"
-                  onClick={() => router.push("/create-event")}
+                  onClick={() => router.push("/create-public-event")}
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   Create Event
@@ -207,10 +204,7 @@ export default function MyCreatedEventsPage() {
               <TabsContent value="upcoming">
                 {upcomingEvents.length > 0 ? (
                   <AnimatePresence>
-                    <motion.div
-                      layout
-                      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-                    >
+                    <motion.div layout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {upcomingEvents.map((event, idx) => (
                         <motion.div
                           key={event.id}
@@ -220,10 +214,7 @@ export default function MyCreatedEventsPage() {
                           transition={{ duration: 0.5, ease: "easeOut", delay: idx * 0.05 }}
                           layout
                         >
-                          <EventCardCreator 
-                            event={event} 
-                            onEventDeleted={handleEventDeleted}
-                          />
+                          <EventCardCreator event={event} onEventDeleted={handleEventDeleted} />
                         </motion.div>
                       ))}
                     </motion.div>
@@ -233,9 +224,9 @@ export default function MyCreatedEventsPage() {
                     <Calendar className="h-12 w-12 mx-auto university-primary-text mb-4" />
                     <h3 className="text-xl font-semibold mb-2">No upcoming events</h3>
                     <p className="text-gray-600 mb-6">You don't have any upcoming events you've created.</p>
-                    <Button 
-                      className="university-button university-button:hover text-white" 
-                      onClick={() => router.push("/create-event")}
+                    <Button
+                      className="university-button university-button:hover text-white"
+                      onClick={() => router.push("/create-public-event")}
                     >
                       <Plus className="h-4 w-4 mr-2" />
                       Create Event
@@ -247,10 +238,7 @@ export default function MyCreatedEventsPage() {
               <TabsContent value="past">
                 {pastEvents.length > 0 ? (
                   <AnimatePresence>
-                    <motion.div
-                      layout
-                      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-                    >
+                    <motion.div layout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {pastEvents.map((event, idx) => (
                         <motion.div
                           key={event.id}
@@ -260,10 +248,7 @@ export default function MyCreatedEventsPage() {
                           transition={{ duration: 0.5, ease: "easeOut", delay: idx * 0.05 }}
                           layout
                         >
-                          <EventCardCreator 
-                            event={event} 
-                            onEventDeleted={handleEventDeleted}
-                          />
+                          <EventCardCreator event={event} onEventDeleted={handleEventDeleted} />
                         </motion.div>
                       ))}
                     </motion.div>
@@ -273,9 +258,9 @@ export default function MyCreatedEventsPage() {
                     <Calendar className="h-12 w-12 mx-auto university-primary-text mb-4" />
                     <h3 className="text-xl font-semibold mb-2">No past events</h3>
                     <p className="text-gray-600 mb-6">You don't have any past events you've created.</p>
-                    <Button 
-                      className="university-button university-button:hover text-white" 
-                      onClick={() => router.push("/create-event")}
+                    <Button
+                      className="university-button university-button:hover text-white"
+                      onClick={() => router.push("/create-public-event")}
                     >
                       <Plus className="h-4 w-4 mr-2" />
                       Create Event
@@ -292,10 +277,10 @@ export default function MyCreatedEventsPage() {
             <p className="text-gray-600 max-w-md mx-auto mb-8">
               You haven't created any events yet. Start by creating your first event!
             </p>
-            <Button 
-              size="lg" 
-              className="university-button university-button:hover text-white" 
-              onClick={() => router.push("/create-event")}
+            <Button
+              size="lg"
+              className="university-button university-button:hover text-white"
+              onClick={() => router.push("/create-public-event")}
             >
               <Plus className="h-4 w-4 mr-2" />
               Create Your First Event
@@ -305,4 +290,4 @@ export default function MyCreatedEventsPage() {
       </main>
     </div>
   )
-} 
+}

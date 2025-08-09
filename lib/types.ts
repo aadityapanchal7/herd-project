@@ -8,7 +8,7 @@ export interface Event {
   date: string
   time: string
   location: string
-  max_attendees: number
+  max_attendees: number 
   current_attendees: number
   verified: boolean
   created_by: string
@@ -17,6 +17,7 @@ export interface Event {
   latitude?: number
   longitude?: number
   creator_name?: string;
+  is_private: boolean;
 
 }
 
@@ -48,3 +49,5 @@ export interface University {
   longitude: number
   zoom_level: number
 }
+
+

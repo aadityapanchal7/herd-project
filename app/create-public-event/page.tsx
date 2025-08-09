@@ -14,17 +14,18 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/context/auth-context";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, MapPin } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { format } from "date-fns";
+import { parse, format } from "date-fns";
 import { getUniversityByName } from "@/lib/universities";
 import { VENUE_COORDS } from "@/lib/school-cords";
 import { motion } from "framer-motion";
 
-export default function CreateEventPage() {
+export default function CreatePublicEventPage() {
   const { toast } = useToast();
   const router = useRouter();
   const { isAuthenticated, user, loading } = useAuth();
@@ -55,7 +56,7 @@ export default function CreateEventPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // track the chosen venue's coords
+  // chosen venue coords
   const [locationCoords, setLocationCoords] = useState<{
     latitude: number;
     longitude: number;
@@ -73,10 +74,9 @@ export default function CreateEventPage() {
     }
   }, [loading, isAuthenticated, router, toast]);
 
-  // whenever the school key or selected location changes, update coords
+  // update coords when school/location changes
   useEffect(() => {
-    const coords =
-      VENUE_COORDS[school]?.[formData.location] ?? null;
+    const coords = VENUE_COORDS[school]?.[formData.location] ?? null;
     setLocationCoords(coords);
   }, [school, formData.location]);
 
@@ -104,21 +104,13 @@ export default function CreateEventPage() {
     } = formData;
 
     // basic validation
-    if (
-      !title ||
-      !category ||
-      !description ||
-      !date ||
-      !time ||
-      !location ||
-      !creator_name
-    ) {
+    if (!title || !category || !description || !date || !time || !location || !creator_name) {
       setFormError("Please fill out all required fields.");
       setIsSubmitting(false);
       return;
     }
 
-    const parsedDate = new Date(date);
+    const parsedDate = parse(date, "yyyy-MM-dd", new Date());
     if (isNaN(parsedDate.getTime())) {
       setFormError("Please select a valid date.");
       setIsSubmitting(false);
@@ -132,23 +124,21 @@ export default function CreateEventPage() {
       return;
     }
 
-    // re-check auth from Supabase
-    const { data: authData, error: authErr } =
-      await supabase.auth.getUser();
+    // re-check auth
+    const { data: authData, error: authErr } = await supabase.auth.getUser();
     if (authErr || !authData.user) {
       setFormError("Authentication error. Please log in again.");
       setIsSubmitting(false);
       return;
     }
 
-    // look up university_id if available
+    // university id (optional)
     let universityId: number | null = null;
     if (user) {
       const uni = await getUniversityByName(user.university);
       universityId = uni?.id ?? null;
     }
 
-    // finally insert
     try {
       const { error } = await supabase.from("events").insert({
         title,
@@ -165,13 +155,11 @@ export default function CreateEventPage() {
         latitude: locationCoords?.latitude,
         longitude: locationCoords?.longitude,
         university_id: universityId,
+        is_private: false, // <-- explicit: public event
       });
       if (error) throw error;
 
-      toast({
-        title: "Success",
-        description: "Event created!",
-      });
+      toast({ title: "Success", description: "Event created!" });
       router.push("/dashboard");
     } catch (err: any) {
       setFormError(err.message || "Unexpected error.");
@@ -181,17 +169,27 @@ export default function CreateEventPage() {
   };
 
   if (loading || !isAuthenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        Loading…
-      </div>
-    );
+    return <div className="min-h-screen flex items-center justify-center">Loading…</div>;
   }
 
   return (
     <div className="min-h-screen bg-[#f8f7fc] flex flex-col">
       <Header />
       <main className="container mx-auto px-4 py-10">
+        {/* Tabs to switch routes */}
+        <Tabs
+          value="public"
+          onValueChange={(v) =>
+            router.push(v === "public" ? "/create-public-event" : "/create-private-event")
+          }
+          className="mb-6"
+        >
+          <TabsList>
+            <TabsTrigger value="public">Create Public Event</TabsTrigger>
+            <TabsTrigger value="private">Create Private Event</TabsTrigger>
+          </TabsList>
+        </Tabs>
+
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -199,7 +197,7 @@ export default function CreateEventPage() {
           className="bg-white p-6 rounded-lg shadow"
         >
           <h1 className="text-2xl font-bold university-primary-text mb-6">
-            Create New Event
+            Create New Public Event
           </h1>
 
           {formError && (
@@ -215,22 +213,11 @@ export default function CreateEventPage() {
             className="space-y-6"
             initial="hidden"
             animate="visible"
-            variants={{
-              hidden: {},
-              visible: { transition: { staggerChildren: 0.07 } },
-            }}
+            variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.07 } } }}
           >
             {/* Host name */}
-            <motion.div
-              variants={{
-                hidden: { opacity: 0, y: 16 },
-                visible: { opacity: 1, y: 0 },
-              }}
-              className="space-y-2"
-            >
-              <Label htmlFor="creator_name">
-                Name of Person/Organization Hosting Event
-              </Label>
+            <motion.div variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } }} className="space-y-2">
+              <Label htmlFor="creator_name">Name of Person/Organization Hosting Event</Label>
               <Input
                 id="creator_name"
                 name="creator_name"
@@ -242,13 +229,7 @@ export default function CreateEventPage() {
             </motion.div>
 
             {/* Title */}
-            <motion.div
-              variants={{
-                hidden: { opacity: 0, y: 16 },
-                visible: { opacity: 1, y: 0 },
-              }}
-              className="space-y-2"
-            >
+            <motion.div variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } }} className="space-y-2">
               <Label htmlFor="title">Event Title</Label>
               <Input
                 id="title"
@@ -261,20 +242,12 @@ export default function CreateEventPage() {
             </motion.div>
 
             {/* Category */}
-            <motion.div
-              variants={{
-                hidden: { opacity: 0, y: 16 },
-                visible: { opacity: 1, y: 0 },
-              }}
-              className="space-y-2"
-            >
+            <motion.div variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } }} className="space-y-2">
               <Label htmlFor="category">Category</Label>
               <Select
                 name="category"
                 value={formData.category}
-                onValueChange={(val) =>
-                  setFormData((p) => ({ ...p, category: val }))
-                }
+                onValueChange={(val) => setFormData((p) => ({ ...p, category: val }))}
                 required
               >
                 <SelectTrigger>
@@ -290,13 +263,7 @@ export default function CreateEventPage() {
             </motion.div>
 
             {/* Description */}
-            <motion.div
-              variants={{
-                hidden: { opacity: 0, y: 16 },
-                visible: { opacity: 1, y: 0 },
-              }}
-              className="space-y-2"
-            >
+            <motion.div variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } }} className="space-y-2">
               <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"
@@ -310,13 +277,7 @@ export default function CreateEventPage() {
             </motion.div>
 
             {/* Date & Time */}
-            <motion.div
-              variants={{
-                hidden: { opacity: 0, y: 16 },
-                visible: { opacity: 1, y: 0 },
-              }}
-              className="grid grid-cols-1 md:grid-cols-2 gap-6"
-            >
+            <motion.div variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } }} className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="date">Date</Label>
                 <Input
@@ -326,9 +287,7 @@ export default function CreateEventPage() {
                   ref={dateRef}
                   value={formData.date}
                   onChange={handleChange}
-                  onFocus={(e) =>
-                    (e.target as HTMLInputElement).showPicker?.()
-                  }
+                  onFocus={(e) => (e.target as HTMLInputElement).showPicker?.()}
                   required
                 />
               </div>
@@ -341,22 +300,14 @@ export default function CreateEventPage() {
                   ref={timeRef}
                   value={formData.time}
                   onChange={handleChange}
-                  onFocus={(e) =>
-                    (e.target as HTMLInputElement).showPicker?.()
-                  }
+                  onFocus={(e) => (e.target as HTMLInputElement).showPicker?.()}
                   required
                 />
               </div>
             </motion.div>
 
             {/* Location */}
-            <motion.div
-              variants={{
-                hidden: { opacity: 0, y: 16 },
-                visible: { opacity: 1, y: 0 },
-              }}
-              className="space-y-2 relative"
-            >
+            <motion.div variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } }} className="space-y-2 relative">
               <Label htmlFor="location">Location</Label>
               <Input
                 id="location"
@@ -374,19 +325,11 @@ export default function CreateEventPage() {
                 ))}
               </datalist>
               <MapPin className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-              <p className="text-xs text-gray-500">
-                Start typing to filter venues or scroll to select.
-              </p>
+              <p className="text-xs text-gray-500">Start typing to filter venues or scroll to select.</p>
             </motion.div>
 
             {/* Max Attendees */}
-            <motion.div
-              variants={{
-                hidden: { opacity: 0, y: 16 },
-                visible: { opacity: 1, y: 0 },
-              }}
-              className="space-y-2"
-            >
+            <motion.div variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } }} className="space-y-2">
               <Label htmlFor="maxAttendees">Maximum Attendees</Label>
               <Input
                 id="maxAttendees"
@@ -400,24 +343,11 @@ export default function CreateEventPage() {
             </motion.div>
 
             {/* Buttons */}
-            <motion.div
-              variants={{
-                hidden: { opacity: 0, y: 16 },
-                visible: { opacity: 1, y: 0 },
-              }}
-              className="flex justify-end space-x-4"
-            >
-              <Button
-                variant="outline"
-                onClick={() => router.push("/dashboard")}
-              >
+            <motion.div variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } }} className="flex justify-end space-x-4">
+              <Button variant="outline" onClick={() => router.push("/dashboard")}>
                 Cancel
               </Button>
-              <Button
-                type="submit"
-                disabled={isSubmitting}
-                className="university-button hover:bg-[#7a60c6]"
-              >
+              <Button type="submit" disabled={isSubmitting} className="university-button hover:bg-[#7a60c6]">
                 {isSubmitting ? "Creating..." : "Create Event"}
               </Button>
             </motion.div>

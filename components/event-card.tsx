@@ -1,4 +1,3 @@
-// components/EventCard.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -9,12 +8,11 @@ import { useAuth } from "@/context/auth-context";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
 import type { Event } from "@/lib/types";
+import { AvatarThumb } from "@/components/avatar-thumb";
 
 interface EventCardProps {
   event: Event;
-  /** show a “Remove RSVP” button instead of RSVP/Already RSVP’d */
   allowRemoveRSVP?: boolean;
-  /** callback to call when Remove RSVP is clicked */
   onRemoveRSVP?: () => void;
 }
 
@@ -67,7 +65,6 @@ export function EventCard({
     }[c] ?? "bg-gray-100 text-gray-800";
   }
 
-  // fetch attendee count & avatars
   useEffect(() => {
     setLoadingAttendees(true);
     supabase
@@ -84,7 +81,6 @@ export function EventCard({
       });
   }, [id, isRsvping]);
 
-  // check if current user RSVP'd
   useEffect(() => {
     if (!isAuthenticated || !user) {
       setHasRSVPd(false);
@@ -115,7 +111,6 @@ export function EventCard({
 
     setIsRsvping(true);
     try {
-      // double-check
       const { data: exists } = await supabase
         .from("event_rsvps")
         .select("*")
@@ -175,12 +170,7 @@ export function EventCard({
         </Badge>
         {verified && (
           <div className="flex items-center text-blue-600 text-sm">
-            {/* verified icon */}
-            <svg
-              className="w-4 h-4 mr-1 text-blue-500"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
+            <svg className="w-4 h-4 mr-1 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
               <path
                 fillRule="evenodd"
                 d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
@@ -202,23 +192,14 @@ export function EventCard({
 
       <div className="space-y-2 mb-4">
         <div className="flex items-center text-gray-500">
-          <CalendarIcon
-            className="w-4 h-4 mr-2"
-            style={{ color: "var(--primary-color)" }}
-          />
-          <span>
-            {date} • {time}
-          </span>
+          <CalendarIcon className="w-4 h-4 mr-2" style={{ color: "var(--primary-color)" }} />
+          <span>{date} • {time}</span>
         </div>
         <div className="flex items-center text-gray-500">
-          <MapPin
-            className="w-4 h-4 mr-2"
-            style={{ color: "var(--primary-color)" }}
-          />
+          <MapPin className="w-4 h-4 mr-2" style={{ color: "var(--primary-color)" }} />
           <span>{location}</span>
         </div>
         <div className="flex items-center text-gray-500">
-          {/* boxed users icon */}
           <button
             type="button"
             className="group flex items-center justify-center w-8 h-8 rounded-md border border-[var(--primary-color)] bg-white hover:bg-[var(--primary-color)] transition-colors focus:outline-none mr-2"
@@ -268,11 +249,7 @@ export function EventCard({
           >
             <div className="flex justify-between items-center mb-3">
               <h4 className="font-semibold text-lg">Attendees</h4>
-              <button
-                className="text-gray-400 hover:text-gray-700 text-2xl"
-                onClick={() => setShowAttendeeList(false)}
-                aria-label="Close attendees list"
-              >
+              <button className="text-gray-400 hover:text-gray-700 text-2xl" onClick={() => setShowAttendeeList(false)}>
                 &times;
               </button>
             </div>
@@ -286,37 +263,18 @@ export function EventCard({
             {loadingAttendees ? (
               <div>Loading…</div>
             ) : filteredAttendees.length === 0 ? (
-              <div className="text-gray-500 text-sm">
-                No one has RSVP'd yet.
-              </div>
+              <div className="text-gray-500 text-sm">No one has RSVP'd yet.</div>
             ) : (
               <ul className="space-y-3 max-h-64 overflow-y-auto">
                 {filteredAttendees.map((a, idx) => (
                   <li key={idx} className="flex items-center gap-3">
-                    {a.attendee_avatar_url ? (
-                      <img
-                        src={a.attendee_avatar_url}
-                        alt={`${a.attendee_first} ${a.attendee_last}`}
-                        className="w-8 h-8 rounded-full object-cover border"
-                        onError={(e) =>
-                          (e.currentTarget.src = "/ut-default-avatar.jpg")
-                        }
-                      />
-                    ) : (
-                      <div
-                        className="w-8 h-8 rounded-full flex items-center justify-center font-semibold text-white"
-                        style={{
-                          backgroundColor: "var(--primary-color)",
-                          fontSize: 14,
-                        }}
-                      >
-                        {a.attendee_first[0]?.toUpperCase()}
-                        {a.attendee_last[0]?.toUpperCase()}
-                      </div>
-                    )}
-                    <span>
-                      {a.attendee_first} {a.attendee_last}
-                    </span>
+                    <AvatarThumb
+                      url={a.attendee_avatar_url}
+                      first={a.attendee_first}
+                      last={a.attendee_last}
+                      size={32}
+                    />
+                    <span>{a.attendee_first} {a.attendee_last}</span>
                   </li>
                 ))}
               </ul>

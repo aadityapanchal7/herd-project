@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Bell, LogOut, User, PlusCircle, CalendarCheck, Users, Calendar, Heart } from "lucide-react"
+import { Mail, LogOut, User, PlusCircle, CalendarCheck, Users, Calendar, Heart } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/context/auth-context"
 import { useRouter } from "next/navigation"
@@ -59,7 +59,7 @@ export function Header() {
           {isAuthenticated && (
             <Button
               className="university-button university-button:hover"
-              onClick={() => router.push("/create-event")}
+              onClick={() => router.push("/create-public-event")}
             >
               <PlusCircle className="mr-2 h-4 w-4" />
               Create Event
@@ -108,6 +108,14 @@ export function Header() {
                     <Calendar className="mr-2 h-4 w-4" />
                     My Created Events
                   </Link>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem>
+<Link href="/my-invites" className="flex w-full items-cente">
+  <Mail className="mr-2 h-4 w-4" />
+  <span>My Invites</span>
+</Link>
+
                 </DropdownMenuItem>
 
                 <DropdownMenuItem>

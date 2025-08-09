@@ -1,6 +1,7 @@
+// app/edit-event/[id]/page.tsx
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Header } from "@/components/header";
 import { Button } from "@/components/ui/button";
@@ -17,13 +18,27 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/context/auth-context";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, MapPin } from "lucide-react";
+import { AlertCircle, MapPin, Search as SearchIcon } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { format } from "date-fns";
 import { getUniversityByName } from "@/lib/universities";
 import { VENUE_COORDS } from "@/lib/school-cords";
 import { motion } from "framer-motion";
 import type { Event } from "@/lib/types";
+import { saveInviteesAndPruneRsvps } from "@/lib/private-events";
+
+type Profile = {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  avatar_url: string | null;
+};
+
+function uniqById<T extends { id: string }>(arr: T[]): T[] {
+  const m = new Map<string, T>();
+  for (const x of arr) m.set(x.id, x);
+  return Array.from(m.values());
+}
 
 export default function EditEventPage() {
   const { toast } = useToast();
@@ -31,6 +46,9 @@ export default function EditEventPage() {
   const params = useParams();
   const eventId = params.id as string;
   const { isAuthenticated, user, loading } = useAuth();
+
+  // tolerate numeric or uuid ids
+  const eventKey: string | number = /^\d+$/.test(eventId) ? Number(eventId) : eventId;
 
   // derive `school` key
   let school = "";
@@ -60,11 +78,21 @@ export default function EditEventPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [event, setEvent] = useState<Event | null>(null);
 
-  // track the chosen venue's coords
+  // chosen venue coords
   const [locationCoords, setLocationCoords] = useState<{
     latitude: number;
     longitude: number;
   } | null>(null);
+
+  // ---------- Private invitee selector state ----------
+  const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
+  const [profilesLoading, setProfilesLoading] = useState(false);
+  const [profileSearch, setProfileSearch] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [seedProfiles, setSeedProfiles] = useState<Profile[]>([]); // profiles for existing invitees
+
+  const isPrivate = !!event?.is_private;
 
   // require login before showing form
   useEffect(() => {
@@ -78,7 +106,7 @@ export default function EditEventPage() {
     }
   }, [loading, isAuthenticated, router, toast]);
 
-  // Fetch event data
+  // Fetch event data (+ existing invitees if private)
   useEffect(() => {
     async function fetchEvent() {
       if (!eventId || !isAuthenticated) return;
@@ -87,12 +115,10 @@ export default function EditEventPage() {
         const { data, error } = await supabase
           .from("events")
           .select("*")
-          .eq("id", eventId)
+          .eq("id", eventKey)
           .single();
 
-        if (error) {
-          throw error;
-        }
+        if (error) throw error;
 
         // Check if user is the creator of this event
         if (data.created_by !== user?.id) {
@@ -106,26 +132,57 @@ export default function EditEventPage() {
         }
 
         setEvent(data);
-        
+
         // Convert date format for input field
         const eventDate = new Date(data.date);
-        const formattedDate = eventDate.toISOString().split('T')[0];
+        const formattedDate = eventDate.toISOString().split("T")[0];
 
-        setFormData({
+        setFormData((prev) => ({
+          ...prev,
           title: data.title,
           category: data.category,
           description: data.description,
           date: formattedDate,
           time: data.time,
           location: data.location,
-          maxAttendees: data.max_attendees.toString(),
+          maxAttendees: data.max_attendees?.toString?.() ?? "100", // ignored for private
           creator_name: data.creator_name || "",
-        });
+        }));
 
         setLocationCoords({
           latitude: data.latitude || 0,
           longitude: data.longitude || 0,
         });
+
+        // If private, load invitees from private_events and profiles
+        if (data.is_private) {
+          const { data: priv } = await supabase
+            .from("private_events")
+            .select("invitee_user_ids")
+            .eq("event_id", eventKey)
+            .maybeSingle();
+
+          const ids: string[] = priv?.invitee_user_ids ?? [];
+          setSelectedIds(new Set(ids));
+
+          if (ids.length > 0) {
+            const { data: profs } = await supabase
+              .from("profiles")
+              .select("id, first_name, last_name, avatar_url")
+              .in("id", ids);
+
+            setSeedProfiles(uniqById((profs as Profile[]) ?? []));
+          }
+        }
+
+        // Preload directory list for invite modal (optional: paginate)
+        setProfilesLoading(true);
+        const { data: directory } = await supabase
+          .from("profiles")
+          .select("id, first_name, last_name, avatar_url")
+          .order("first_name", { ascending: true });
+        setAllProfiles((directory as Profile[]) ?? []);
+        setProfilesLoading(false);
       } catch (error: any) {
         console.error("Error fetching event:", error);
         toast({
@@ -142,12 +199,11 @@ export default function EditEventPage() {
     if (isAuthenticated && user) {
       fetchEvent();
     }
-  }, [eventId, isAuthenticated, user, router, toast]);
+  }, [eventId, eventKey, isAuthenticated, user, router, toast]);
 
   // whenever the school key or selected location changes, update coords
   useEffect(() => {
-    const coords =
-      VENUE_COORDS[school]?.[formData.location] ?? null;
+    const coords = VENUE_COORDS[school]?.[formData.location] ?? null;
     setLocationCoords(coords);
   }, [school, formData.location]);
 
@@ -158,6 +214,50 @@ export default function EditEventPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  // -------- Invitee helpers --------
+  function openInviteModal() {
+    setInviteModalOpen(true);
+  }
+
+  function toggleSelect(uid: string, profile?: Profile) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(uid)) next.delete(uid);
+      else next.add(uid);
+      return next;
+    });
+
+    // Enrich seedProfiles so we can render name/avatar even if not in directory
+    if (profile) {
+      setSeedProfiles((prev) => uniqById([...(prev ?? []), profile]));
+    }
+  }
+
+  const filteredProfiles = useMemo(() => {
+    const q = profileSearch.trim().toLowerCase();
+    if (!q) return allProfiles;
+    return allProfiles.filter((p) => {
+      const first = (p.first_name || "").toLowerCase();
+      const last = (p.last_name || "").toLowerCase();
+      return first.includes(q) || last.includes(q) || `${first} ${last}`.includes(q);
+    });
+  }, [allProfiles, profileSearch]);
+
+  // Derive selectedProfiles uniquely from selectedIds using directory+seed
+  const selectedProfiles = useMemo(() => {
+    const byId = new Map<string, Profile>();
+    for (const p of allProfiles) byId.set(p.id, p);
+    for (const p of seedProfiles) if (!byId.has(p.id)) byId.set(p.id, p);
+
+    const arr: Profile[] = [];
+    for (const id of selectedIds) {
+      const p = byId.get(id);
+      if (p) arr.push(p);
+    }
+    return uniqById(arr);
+  }, [allProfiles, seedProfiles, selectedIds]);
+
+  // -------- Submit / Save --------
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
@@ -175,37 +275,32 @@ export default function EditEventPage() {
     } = formData;
 
     // basic validation
-    if (
-      !title ||
-      !category ||
-      !description ||
-      !date ||
-      !time ||
-      !location ||
-      !creator_name
-    ) {
+    if (!title || !category || !description || !date || !time || !location || !creator_name) {
       setFormError("Please fill out all required fields.");
       setIsSubmitting(false);
       return;
     }
 
-    const parsedDate = new Date(date);
-    if (isNaN(parsedDate.getTime())) {
-      setFormError("Please select a valid date.");
-      setIsSubmitting(false);
-      return;
-    }
-
-    const maxAtt = parseInt(maxAttendees, 10);
-    if (isNaN(maxAtt) || maxAtt < 1) {
-      setFormError("Please enter a valid maximum number of attendees.");
-      setIsSubmitting(false);
-      return;
+    // validate per public/private
+    let maxAtt: number | null = null;
+    if (!isPrivate) {
+      const parsed = parseInt(maxAttendees, 10);
+      if (isNaN(parsed) || parsed < 1) {
+        setFormError("Please enter a valid maximum number of attendees.");
+        setIsSubmitting(false);
+        return;
+      }
+      maxAtt = parsed;
+    } else {
+      if (selectedIds.size === 0) {
+        setFormError("Select at least one invitee.");
+        setIsSubmitting(false);
+        return;
+      }
     }
 
     // re-check auth from Supabase
-    const { data: authData, error: authErr } =
-      await supabase.auth.getUser();
+    const { data: authData, error: authErr } = await supabase.auth.getUser();
     if (authErr || !authData.user) {
       setFormError("Authentication error. Please log in again.");
       setIsSubmitting(false);
@@ -221,25 +316,44 @@ export default function EditEventPage() {
 
     // update the event
     try {
+      const parsedDate = new Date(date);
+      if (isNaN(parsedDate.getTime())) {
+        setFormError("Please select a valid date.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      const updates: any = {
+        title,
+        category,
+        description,
+        date: format(parsedDate, "MMM d, yyyy"),
+        time,
+        location,
+        creator_name,
+        latitude: locationCoords?.latitude,
+        longitude: locationCoords?.longitude,
+        university_id: universityId,
+      };
+
+      // Public: update max_attendees; Private: leave unchanged
+      if (!isPrivate) {
+        updates.max_attendees = maxAtt;
+      }
+
       const { error } = await supabase
         .from("events")
-        .update({
-          title,
-          category,
-          description,
-          date: format(parsedDate, "MMM d, yyyy"),
-          time,
-          location,
-          max_attendees: maxAtt,
-          creator_name,
-          latitude: locationCoords?.latitude,
-          longitude: locationCoords?.longitude,
-          university_id: universityId,
-        })
-        .eq("id", eventId)
+        .update(updates)
+        .eq("id", eventKey)
         .eq("created_by", authData.user.id); // Ensure user can only update their own events
 
       if (error) throw error;
+
+      // Private: save invitees and prune RSVPs for removed users
+      if (isPrivate) {
+        const nextInviteeIds = Array.from(selectedIds); // Set -> string[]
+        await saveInviteesAndPruneRsvps(eventKey, nextInviteeIds);
+      }
 
       toast({
         title: "Success",
@@ -453,26 +567,90 @@ export default function EditEventPage() {
               </Select>
             </motion.div>
 
-            {/* Max Attendees */}
-            <motion.div
-              variants={{
-                hidden: { opacity: 0, y: 16 },
-                visible: { opacity: 1, y: 0 },
-              }}
-              className="space-y-2"
-            >
-              <Label htmlFor="maxAttendees">Maximum Attendees</Label>
-              <Input
-                id="maxAttendees"
-                name="maxAttendees"
-                type="number"
-                min="1"
-                placeholder="100"
-                value={formData.maxAttendees}
-                onChange={handleChange}
-                required
-              />
-            </motion.div>
+            {/* Public: Maximum Attendees | Private: Invitee Selector */}
+            {!isPrivate ? (
+              <motion.div
+                variants={{
+                  hidden: { opacity: 0, y: 16 },
+                  visible: { opacity: 1, y: 0 },
+                }}
+                className="space-y-2"
+              >
+                <Label htmlFor="maxAttendees">Maximum Attendees</Label>
+                <Input
+                  id="maxAttendees"
+                  name="maxAttendees"
+                  type="number"
+                  min="1"
+                  placeholder="100"
+                  value={formData.maxAttendees}
+                  onChange={handleChange}
+                  required
+                />
+              </motion.div>
+            ) : (
+              <motion.div
+                variants={{
+                  hidden: { opacity: 0, y: 16 },
+                  visible: { opacity: 1, y: 0 },
+                }}
+                className="space-y-2"
+              >
+                <Label>Invitees</Label>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <Button
+                    type="button"
+                    className="university-button text-white"
+                    onClick={openInviteModal}
+                  >
+                    Select People ({selectedIds.size})
+                  </Button>
+
+                  {/* Chips (max 6 + +X) */}
+                  {selectedProfiles.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {selectedProfiles.slice(0, 6).map((p) => {
+                        const name =
+                          `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim() ||
+                          "Unnamed User";
+                        return (
+                          <div
+                            key={p.id}
+                            className="flex items-center gap-2 bg-zinc-100 rounded-full px-3 py-1"
+                          >
+                            <img
+                              src={p.avatar_url || "/ut-default-avatar.jpg"}
+                              onError={(e) =>
+                                (e.currentTarget.src = "/ut-default-avatar.jpg")
+                              }
+                              alt=""
+                              className="w-6 h-6 rounded-full object-cover border"
+                            />
+                            <span className="text-sm">{name}</span>
+                            <button
+                              type="button"
+                              className="text-zinc-500 hover:text-zinc-700 ml-1"
+                              onClick={() => toggleSelect(p.id)}
+                              aria-label="Remove invitee"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        );
+                      })}
+                      {selectedProfiles.length > 6 && (
+                        <span className="text-sm text-zinc-600">
+                          +{selectedProfiles.length - 6} more
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500">
+                  Only the creator and selected invitees will see this event.
+                </p>
+              </motion.div>
+            )}
 
             {/* Submit Button */}
             <motion.div
@@ -501,6 +679,104 @@ export default function EditEventPage() {
           </motion.form>
         </motion.div>
       </main>
+
+      {/* Invite Picker Modal (only relevant if private) */}
+      {isPrivate && inviteModalOpen && (
+        <div
+          className="fixed inset-0 z-[11000] bg-black/40 flex items-center justify-center"
+          onClick={() => setInviteModalOpen(false)}
+        >
+          <div
+            className="bg-white rounded-lg p-6 w-full max-w-lg shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="font-semibold text-lg">Select Invitees</h4>
+              <button
+                className="text-gray-400 hover:text-gray-700 text-2xl"
+                onClick={() => setInviteModalOpen(false)}
+                aria-label="Close modal"
+              >
+                &times;
+              </button>
+            </div>
+
+            {/* Search */}
+            <div className="relative mb-3">
+              <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                value={profileSearch}
+                onChange={(e) => setProfileSearch(e.target.value)}
+                placeholder="Search by name…"
+                className="pl-9"
+              />
+            </div>
+
+            <div className="max-h-80 overflow-y-auto border rounded-md">
+              {profilesLoading ? (
+                <div className="p-4 text-sm text-zinc-500">Loading…</div>
+              ) : filteredProfiles.length === 0 ? (
+                <div className="p-4 text-sm text-zinc-500">No profiles found.</div>
+              ) : (
+                <ul className="divide-y">
+                  {filteredProfiles.map((p) => {
+                    const full =
+                      `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim() ||
+                      "Unnamed User";
+                    const checked = selectedIds.has(p.id);
+                    return (
+                      <li
+                        key={p.id}
+                        className="flex items-center justify-between p-3 hover:bg-zinc-50 cursor-pointer"
+                        onClick={() => toggleSelect(p.id, p)}
+                      >
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={p.avatar_url || "/ut-default-avatar.jpg"}
+                            onError={(e) =>
+                              (e.currentTarget.src = "/ut-default-avatar.jpg")
+                            }
+                            alt=""
+                            className="w-9 h-9 rounded-full object-cover border"
+                          />
+                          <div className="flex flex-col">
+                            <span className="font-medium">{full}</span>
+                            <span className="text-xs text-zinc-500">{p.id}</span>
+                          </div>
+                        </div>
+                        <input
+                          type="checkbox"
+                          readOnly
+                          checked={checked}
+                          className="w-4 h-4 accent-[var(--primary-color)]"
+                        />
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2 mt-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSelectedIds(new Set());
+                  setSeedProfiles([]);
+                }}
+              >
+                Clear
+              </Button>
+              <Button
+                className="university-button text-white"
+                onClick={() => setInviteModalOpen(false)}
+              >
+                Done ({selectedIds.size} selected)
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
-} 
+}
