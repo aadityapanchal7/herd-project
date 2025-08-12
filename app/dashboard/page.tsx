@@ -1,4 +1,3 @@
-// app/(dashboard)/page.tsx
 "use client";
 
 import { useEffect, useMemo } from "react";
@@ -10,64 +9,81 @@ import { ViewSelector } from "@/components/view-selector";
 import { EventCard } from "@/components/event-card";
 import { useAuth } from "@/context/auth-context";
 import { useEvents } from "@/context/events-context";
-import { useToast } from "@/components/ui/use-toast";
 import type { Event } from "@/lib/types";
+import { parse, isValid } from "date-fns";
 
 export default function DashboardPage() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
-  const { events, userRsvps } = useEvents();
+  const { events, userRsvps, loading: eventsLoading } = useEvents() as {
+    events: (Event & { attendee_count?: number })[];
+    userRsvps: number[];
+    loading?: boolean;
+  };
   const router = useRouter();
-  const { toast } = useToast();
 
-  // Redirect unauthenticated
+  // Redirect after auth resolves
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
-      toast({
-        title: "Authentication Required",
-        description: "You must be logged in to view the dashboard",
-        variant: "destructive",
-      });
       router.push("/login");
     }
-  }, [authLoading, isAuthenticated, router, toast]);
+  }, [authLoading, isAuthenticated, router]);
 
-  // Campus name for subtitle
-  const campusName = user?.university ?? "your campus";
+  const today = useMemo(() => {
+    const t = new Date();
+    t.setHours(0, 0, 0, 0);
+    return t;
+  }, []);
 
-  // Normalize "today" to midnight
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const parseEventDate = (d: string): Date => {
+    let p = parse(d, "MMM d, yyyy", new Date());
+    if (isValid(p)) return p;
+    p = parse(d, "yyyy-MM-dd", new Date());
+    if (isValid(p)) return p;
+    const asDate = new Date(d);
+    return isValid(asDate) ? asDate : new Date(8640000000000000);
+  };
 
-  // 1) All upcoming events (today or later)
   const upcomingEvents = useMemo(
-    () => events.filter((e) => new Date(e.date) >= today),
-    [events]
+    () => (events ?? []).filter((e) => parseEventDate(e.date) >= today),
+    [events, today]
   );
 
-  // 2) Recommended: up to 3 within the next 7 days,
-  //    EXCLUDING events the user has already RSVPd to
+  const isVisibleToMe = (e: Event & { attendee_count?: number }) => {
+    const mine = user?.id && e.created_by === user.id;
+
+    // Only consider "full" when RSVPs are allowed AND limited and max > 0
+    const isLimited = e.allow_rsvp && e.rsvp_limited;
+    const max =
+      Number.isFinite(e.max_attendees) && (e.max_attendees ?? 0) > 0
+        ? e.max_attendees!
+        : undefined;
+    const attendeeCount = e.attendee_count ?? e.current_attendees ?? 0;
+
+    const full = isLimited && max !== undefined && attendeeCount >= max;
+
+    return !mine && !full;
+  };
+
   const recommendedThisWeek = useMemo(() => {
     const oneWeekLater = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const base = upcomingEvents
+      .filter(isVisibleToMe)
+      .filter((e) => !(userRsvps ?? []).includes(e.id));
 
-    // remove already-RSVPd events
-    const notRsvpd = upcomingEvents.filter((e) => !userRsvps.includes(e.id));
+    const within = base.filter((e) => {
+      const d = parseEventDate(e.date);
+      return d >= today && d <= oneWeekLater;
+    });
 
-    // shuffle the remaining and take only those within the next week
-    const shuffled = [...notRsvpd].sort(() => Math.random() - 0.5);
+    return [...within].sort(() => Math.random() - 0.5).slice(0, 3);
+  }, [upcomingEvents, userRsvps, user?.id, today]);
 
-    return shuffled
-      .filter((e) => {
-        const d = new Date(e.date);
-        return d >= today && d <= oneWeekLater;
-      })
-      .slice(0, 3);
-  }, [upcomingEvents, userRsvps]);
-
-  // 3) Your scheduled events: any upcoming event you've RSVPd to
   const scheduledEvents = useMemo(
-    () => upcomingEvents.filter((e) => userRsvps.includes(e.id)),
+    () => upcomingEvents.filter((e) => (userRsvps ?? []).includes(e.id)),
     [upcomingEvents, userRsvps]
   );
+
+  const campusName = user?.university ?? "your campus";
 
   return (
     <main className="min-h-screen bg-[#f8f7fc]">
@@ -77,54 +93,62 @@ export default function DashboardPage() {
         <ConfigCheck />
       </div>
 
-      {/* Hero */}
       <HeroSection
         title="Discover Events"
         subtitle={`Find and join events happening around the ${campusName}`}
       />
 
-      {/* View Tabs */}
       <ViewSelector />
 
-      {/* Recommended Events */}
-      <div className="container max-w-6xl mx-auto px-4 mt-8">
-        <div className="bg-white rounded-xl shadow-sm p-4 mb-4">
-          <h2 className="text-xl font-semibold university-primary-text">
-            Recommended Events For You This Week
-          </h2>
+      {(authLoading || eventsLoading) && (
+        <div className="container max-w-6xl mx-auto px-4 py-10 text-center text-slate-500">
+          Loading…
         </div>
-        {recommendedThisWeek.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
-            {recommendedThisWeek.map((evt: Event) => (
-              <EventCard key={evt.id} event={evt} />
-            ))}
-          </div>
-        ) : (
-          <p className="text-center text-gray-600 mb-10">
-            There are no recommended events for you this week.
-          </p>
-        )}
-      </div>
+      )}
 
-      {/* My Scheduled Events */}
-      <div className="container max-w-6xl mx-auto px-4 mb-10">
-        <div className="bg-white rounded-xl shadow-sm p-4 mb-4">
-          <h2 className="text-xl font-semibold university-primary-text">
-            My Scheduled Events
-          </h2>
-        </div>
-        {scheduledEvents.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {scheduledEvents.map((evt: Event) => (
-              <EventCard key={evt.id} event={evt} />
-            ))}
+      {!authLoading && !eventsLoading && (
+        <>
+          {/* Recommended */}
+          <div className="container max-w-6xl mx-auto px-4 mt-8">
+            <div className="bg-white rounded-xl shadow-sm p-4 mb-4">
+              <h2 className="text-xl font-semibold university-primary-text">
+                Recommended Events For You This Week
+              </h2>
+            </div>
+            {recommendedThisWeek.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+                {recommendedThisWeek.map((evt) => (
+                  <EventCard key={evt.id} event={evt} />
+                ))}
+              </div>
+            ) : (
+              <p className="text-center text-gray-600 mb-10">
+                There are no recommended events for you this week.
+              </p>
+            )}
           </div>
-        ) : (
-          <p className="text-center text-gray-600">
-            You have no upcoming scheduled events.
-          </p>
-        )}
-      </div>
+
+          {/* My Scheduled */}
+          <div className="container max-w-6xl mx-auto px-4 mb-10">
+            <div className="bg-white rounded-xl shadow-sm p-4 mb-4">
+              <h2 className="text-xl font-semibold university-primary-text">
+                My Scheduled Events
+              </h2>
+            </div>
+            {scheduledEvents.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {scheduledEvents.map((evt) => (
+                  <EventCard key={evt.id} event={evt} />
+                ))}
+              </div>
+            ) : (
+              <p className="text-center text-gray-600">
+                You have no upcoming scheduled events.
+              </p>
+            )}
+          </div>
+        </>
+      )}
     </main>
   );
 }

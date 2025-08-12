@@ -87,10 +87,6 @@ export default function SignupPage() {
       })
 
       if (success) {
-        toast({
-          title: "Account created",
-          description: "Welcome to Herd! Your account has been created successfully.",
-        })
         // Add a small delay before redirecting
         setTimeout(() => {
           router.push("/")
@@ -116,11 +112,6 @@ export default function SignupPage() {
   useEffect(() => {
       // Only redirect if loading is complete AND user is definitely not authenticated
       if (isAuthenticated) {
-        toast({
-          title: "Visit your dashboard",
-          description: "Explore Events!",
-          variant: "default",
-        })
         router.push("/dashboard")
       }
     }, [isAuthenticated, loading, router, toast])

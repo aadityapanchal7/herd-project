@@ -1,6 +1,7 @@
+// components/event-card.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CalendarIcon, MapPin, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,25 +10,29 @@ import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
 import type { Event } from "@/lib/types";
 import { AvatarThumb } from "@/components/avatar-thumb";
+import { VENUE_COORDS } from "@/lib/school-cords";
 
-interface EventCardProps {
+type EventCardProps = {
   event: Event;
   allowRemoveRSVP?: boolean;
   onRemoveRSVP?: () => void;
-}
+  linkLocation?: boolean;
+};
 
-interface Attendee {
+type Attendee = {
   attendee_first: string;
   attendee_last: string;
   attendee_avatar_url: string | null;
-}
+};
 
 export function EventCard({
   event,
   allowRemoveRSVP = false,
   onRemoveRSVP,
+  linkLocation = false,
 }: EventCardProps) {
   const {
+    id,
     title,
     category,
     description,
@@ -35,121 +40,138 @@ export function EventCard({
     time,
     location,
     max_attendees,
-    id,
     creator_name,
     verified,
+    created_by,
+    latitude,
+    longitude,
+    image_url,
+    allow_rsvp,
+    rsvp_limited,
   } = event;
 
   const { isAuthenticated, user } = useAuth();
   const { toast } = useToast();
+
+  const isOwner = !!user && created_by === user.id;
 
   const [isRsvping, setIsRsvping] = useState(false);
   const [attendeeCount, setAttendeeCount] = useState<number>(0);
   const [hasRSVPd, setHasRSVPd] = useState(false);
   const [showAttendeeList, setShowAttendeeList] = useState(false);
   const [attendees, setAttendees] = useState<Attendee[]>([]);
-  const [loadingAttendees, setLoadingAttendees] = useState(false);
   const [attendeeSearch, setAttendeeSearch] = useState("");
-  const filteredAttendees = attendees.filter((a) =>
-    `${a.attendee_first} ${a.attendee_last}`
-      .toLowerCase()
-      .includes(attendeeSearch.toLowerCase())
-  );
+  const [loadingAttendees, setLoadingAttendees] = useState(false);
 
-  function getCategoryColor(c: string) {
-    return {
-      Social: "bg-purple-100 text-purple-800",
-      Academic: "bg-green-100 text-green-800",
-      Sports: "bg-red-100 text-red-800",
-      Arts: "bg-pink-100 text-pink-800",
-    }[c] ?? "bg-gray-100 text-gray-800";
-  }
+  // ----- School key (for coords fallback)
+  const school = useMemo(() => {
+    const uni = (user?.university || "").toLowerCase();
+    if (uni.includes("texas") && uni.includes("austin")) return "ut_austin";
+    return "";
+  }, [user?.university]);
 
+  // Build Google Maps link
+  const coordsFromEvent =
+    typeof latitude === "number" && typeof longitude === "number"
+      ? { latitude, longitude }
+      : null;
+
+  const coordsFromVenue =
+    school && location ? VENUE_COORDS[school]?.[location] ?? null : null;
+
+  const chosen = coordsFromEvent || coordsFromVenue || null;
+
+  const googleMapsLink = chosen
+    ? `https://www.google.com/maps?q=${chosen.latitude},${chosen.longitude}`
+    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location || "")}`;
+
+  // ----- Category pill colors
+  const categoryTone =
+    {
+      Social: "bg-purple-100 text-purple-700",
+      Academic: "bg-emerald-100 text-emerald-700",
+      Sports: "bg-orange-100 text-orange-700",
+      Arts: "bg-pink-100 text-pink-700",
+    }[category] || "bg-slate-100 text-slate-700";
+
+  // ----- Load attendees (count + list)
   useEffect(() => {
-    setLoadingAttendees(true);
-    supabase
-      .from("event_rsvps")
-      .select("attendee_first, attendee_last, attendee_avatar_url", {
-        count: "exact",
-        head: false,
-      })
-      .eq("event_id", id)
-      .then(({ data, count }) => {
+    let cancelled = false;
+    (async () => {
+      setLoadingAttendees(true);
+      const { data, count } = await supabase
+        .from("event_rsvps")
+        .select("attendee_first, attendee_last, attendee_avatar_url", {
+          count: "exact",
+          head: false,
+        })
+        .eq("event_id", id);
+
+      if (!cancelled) {
         setAttendees(data || []);
         setAttendeeCount(count ?? data?.length ?? 0);
         setLoadingAttendees(false);
-      });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [id, isRsvping]);
 
+  // ----- Check if the current user RSVP'd
   useEffect(() => {
-    if (!isAuthenticated || !user) {
+    if (!isAuthenticated || !user?.id) {
       setHasRSVPd(false);
       return;
     }
-    supabase
-      .from("event_rsvps")
-      .select("*")
-      .eq("event_id", id)
-      .eq("user_id", user.id)
-      .single()
-      .then(({ data }) => setHasRSVPd(!!data));
-  }, [isAuthenticated, user, id, isRsvping]);
-
-  const handleRSVP = async () => {
-    if (!isAuthenticated || !user) {
-      toast({ title: "Login Required", description: "Please login to RSVP", variant: "destructive" });
-      return;
-    }
-    if (hasRSVPd) {
-      toast({ title: "Already RSVP'd" });
-      return;
-    }
-    if (attendeeCount >= max_attendees) {
-      toast({ title: "Event Full", description: "No spots left!", variant: "destructive" });
-      return;
-    }
-
-    setIsRsvping(true);
-    try {
-      const { data: exists } = await supabase
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
         .from("event_rsvps")
         .select("*")
         .eq("event_id", id)
         .eq("user_id", user.id)
         .single();
-      if (exists) {
-        setHasRSVPd(true);
-        toast({ title: "Already RSVP'd" });
-        return;
-      }
+      if (!cancelled) setHasRSVPd(!!data);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, user?.id, id]);
 
+  // ----- Full/disabled logic
+  const isFull =
+    !!allow_rsvp &&
+    !!rsvp_limited &&
+    attendeeCount >= (max_attendees ?? Number.MAX_SAFE_INTEGER);
+
+  const disabled = !allow_rsvp ? true : isOwner || hasRSVPd || isFull;
+
+  // ----- RSVP handler
+  const handleRSVP = async () => {
+    if (!allow_rsvp) return;
+    if (isOwner || !isAuthenticated || !user?.id || hasRSVPd || isFull) return;
+
+    setIsRsvping(true);
+    try {
       const { data: prof, error: profErr } = await supabase
         .from("profiles")
         .select("first_name, last_name, avatar_url")
         .eq("id", user.id)
         .single();
-      if (profErr || !prof) {
-        toast({
-          title: "Profile Load Failed",
-          description: profErr?.message || "Could not load your profile.",
-          variant: "destructive",
-        });
-        return;
-      }
+      if (profErr || !prof) throw new Error("Could not load your profile.");
 
-      const { error: insErr } = await supabase
-        .from("event_rsvps")
-        .insert({
-          event_id: id,
-          user_id: user.id,
-          attendee_first: prof.first_name,
-          attendee_last: prof.last_name,
-          attendee_avatar_url: prof.avatar_url,
-        });
+      const { error: insErr } = await supabase.from("event_rsvps").insert({
+        event_id: id,
+        user_id: user.id,
+        attendee_first: prof.first_name,
+        attendee_last: prof.last_name,
+        attendee_avatar_url: prof.avatar_url,
+      });
       if (insErr) throw insErr;
 
       setHasRSVPd(true);
-      toast({ title: "RSVP Successful" });
+      setAttendeeCount((c) => c + 1);
     } catch (err: any) {
       console.error(err);
       toast({
@@ -162,83 +184,174 @@ export function EventCard({
     }
   };
 
+  // ----- Filtered attendees for the modal
+  const filteredAttendees = useMemo(() => {
+    const q = attendeeSearch.toLowerCase();
+    return attendees.filter((a) =>
+      `${a.attendee_first} ${a.attendee_last}`.toLowerCase().includes(q)
+    );
+  }, [attendees, attendeeSearch]);
+
   return (
-    <div className="bg-white rounded-lg border p-6 transition-shadow hover:shadow-md">
-      <div className="flex justify-between items-start mb-4">
-        <Badge variant="outline" className={getCategoryColor(category)}>
-          {category}
-        </Badge>
-        {verified && (
-          <div className="flex items-center text-blue-600 text-sm">
-            <svg className="w-4 h-4 mr-1 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-              <path
-                fillRule="evenodd"
-                d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                clipRule="evenodd"
-              />
-            </svg>
-            Verified Host
-          </div>
-        )}
-      </div>
-
-      <h3 className="text-xl font-bold mb-2">{title}</h3>
-      {creator_name && (
-        <p className="text-sm text-gray-500 mb-2">
-          <strong>Hosted by:</strong> {creator_name}
-        </p>
-      )}
-      <p className="text-gray-600 mb-4">{description}</p>
-
-      <div className="space-y-2 mb-4">
-        <div className="flex items-center text-gray-500">
-          <CalendarIcon className="w-4 h-4 mr-2" style={{ color: "var(--primary-color)" }} />
-          <span>{date} • {time}</span>
-        </div>
-        <div className="flex items-center text-gray-500">
-          <MapPin className="w-4 h-4 mr-2" style={{ color: "var(--primary-color)" }} />
-          <span>{location}</span>
-        </div>
-        <div className="flex items-center text-gray-500">
-          <button
-            type="button"
-            className="group flex items-center justify-center w-8 h-8 rounded-md border border-[var(--primary-color)] bg-white hover:bg-[var(--primary-color)] transition-colors focus:outline-none mr-2"
-            onClick={() => setShowAttendeeList(true)}
-            title="View attendees"
-          >
-            <Users className="w-5 h-5 text-[var(--primary-color)] group-hover:text-white transition-colors" />
-          </button>
-          <span className="text-base">
-            {attendeeCount} / {max_attendees} attendees
-          </span>
-        </div>
-      </div>
-
-      <div className="flex justify-end">
-        {allowRemoveRSVP && onRemoveRSVP ? (
-          <Button
-            variant="outline"
-            className="border-red-700 text-red-700 hover:bg-red-500 font-semibold"
-            onClick={onRemoveRSVP}
-          >
-            Remove RSVP
-          </Button>
-        ) : hasRSVPd ? (
-          <span className="bg-green-100 text-green-800 rounded-lg px-4 py-2 font-semibold">
-            Already RSVP'd
-          </span>
+    <article
+      className="group/card relative overflow-hidden rounded-2xl border bg-white shadow-sm transition-all hover:shadow-md"
+      role="region"
+      aria-label={title}
+    >
+      {/* Cover image (banner) */}
+      <div className="relative h-40 w-full md:h-44 lg:h-48">
+        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/0 to-black/10 z-[1]" />
+        {image_url ? (
+          <img
+            src={image_url}
+            alt={title}
+            className="h-full w-full object-cover"
+            loading="lazy"
+          />
         ) : (
-          <Button
-            className="university-button"
-            onClick={handleRSVP}
-            disabled={isRsvping || attendeeCount >= max_attendees}
-          >
-            {isRsvping ? "Processing…" : "RSVP"}
-          </Button>
+          <div className="h-full w-full bg-gradient-to-br from-slate-100 to-slate-200" />
         )}
+
+        {/* Category & verified chips */}
+        <div className="absolute top-3 left-3 z-[2] flex items-center gap-2">
+          <Badge variant="secondary" className={`backdrop-blur ${categoryTone}`}>
+            {category}
+          </Badge>
+          {verified && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-1 text-xs font-medium text-sky-700">
+              <svg
+                className="h-4 w-4"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M16.707 5.293a1 1 0 010 1.414l-7.364 7.364a1 1 0 01-1.414 0L3.293 9.435a1 1 0 111.414-1.414l3.222 3.222 6.657-6.657a1 1 0 011.414 0z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              Verified
+            </span>
+          )}
+        </div>
       </div>
 
-      {showAttendeeList && (
+      {/* Body */}
+      <div className="p-5 md:p-6">
+        <h3 className="text-xl font-bold leading-tight mb-1">{title}</h3>
+        {creator_name && (
+          <p className="mb-3 text-sm text-slate-500">
+            <span className="font-semibold text-slate-700">Created by:</span>{" "}
+            {creator_name}
+          </p>
+        )}
+        {description && <p className="text-slate-600 mb-4">{description}</p>}
+
+        {/* Meta */}
+        <ul className="space-y-2 text-slate-600">
+          {/* Date */}
+          <li className="flex items-center">
+            <CalendarIcon className="mr-2 h-4 w-4 text-[var(--primary-color)]" />
+            <span className="text-[15px]">
+              {date} • {time}
+            </span>
+          </li>
+
+          {/* Location */}
+          <li className="flex items-center">
+            {linkLocation && googleMapsLink ? (
+              <>
+                <a
+                  href={googleMapsLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Open in Google Maps"
+                  className="group/map mr-2 inline-flex h-8 w-8 items-center justify-center rounded-md border border-[var(--primary-color)] bg-white text-[var(--primary-color)] hover:bg-[var(--primary-color)] hover:text-white transition-colors"
+                >
+                  <MapPin className="h-5 w-5 transition-colors group-hover/map:text-white" />
+                </a>
+                <span className="text-[15px]">{location}</span>
+              </>
+            ) : (
+              <>
+                <MapPin className="mr-2 h-4 w-4 text-[var(--primary-color)]" />
+                <span className="text-[15px]">{location}</span>
+              </>
+            )}
+          </li>
+
+          {/* Attendees row */}
+          {allow_rsvp ? (
+            // RSVPs enabled → show button + counts
+            <li className="flex items-center">
+              <button
+                type="button"
+                className="group/att mr-2 flex h-9 w-9 items-center justify-center rounded-md border border-[var(--primary-color)] bg-white transition-colors hover:bg-[var(--primary-color)] focus:outline-none"
+                onClick={() => setShowAttendeeList(true)}
+                title="View attendees"
+              >
+                <Users className="h-5 w-5 text-[var(--primary-color)] transition-colors group-hover/att:text-white" />
+              </button>
+              <span className="text-[15px]">
+                {rsvp_limited
+                  ? `${attendeeCount} / ${max_attendees ?? 0} attendees`
+                  : `${attendeeCount} attendees`}
+              </span>
+            </li>
+          ) : (
+            // RSVPs disabled → non-clickable Users icon + text
+            <li className="flex items-center">
+  <Users className="mr-2 h-4 w-4 text-[var(--primary-color)]" />
+  <span className="text-[15px] text-slate-600">No RSVP needed</span>
+</li>
+          )}
+        </ul>
+
+        {/* Footer actions */}
+        <div className="mt-5 flex items-center justify-between">
+          {/* left status badge */}
+          {isOwner ? (
+            <span className="text-xs font-medium rounded-full bg-slate-100 text-slate-700 px-3 py-1">
+              Your event
+            </span>
+          ) : hasRSVPd ? (
+            <span className="text-xs font-medium rounded-full bg-green-100 text-green-700 px-3 py-1">
+              Already RSVP’d
+            </span>
+          ) : isFull ? (
+            <span className="text-xs font-medium rounded-full bg-rose-100 text-rose-700 px-3 py-1">
+              Event full
+            </span>
+          ) : (
+            <span />
+          )}
+
+          {/* right CTA */}
+          {allowRemoveRSVP && onRemoveRSVP ? (
+            <Button
+              variant="outline"
+              className="border-rose-700 text-rose-700 hover:bg-rose-600 hover:text-white font-semibold"
+              onClick={onRemoveRSVP}
+            >
+              Remove RSVP
+            </Button>
+          ) : allow_rsvp ? (
+            <Button
+              className="university-button px-5 py-5"
+              onClick={handleRSVP}
+              disabled={disabled || isRsvping}
+            >
+              {isRsvping ? "Processing…" : "RSVP"}
+            </Button>
+          ) : (
+            <span /> // RSVPs disabled → no CTA
+          )}
+        </div>
+      </div>
+
+      {/* Attendees modal (only when RSVPs enabled) */}
+      {showAttendeeList && allow_rsvp && (
         <div
           className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center"
           onClick={() => setShowAttendeeList(false)}
@@ -249,7 +362,11 @@ export function EventCard({
           >
             <div className="flex justify-between items-center mb-3">
               <h4 className="font-semibold text-lg">Attendees</h4>
-              <button className="text-gray-400 hover:text-gray-700 text-2xl" onClick={() => setShowAttendeeList(false)}>
+              <button
+                className="text-gray-400 hover:text-gray-700 text-2xl"
+                onClick={() => setShowAttendeeList(false)}
+                aria-label="Close attendees list"
+              >
                 &times;
               </button>
             </div>
@@ -274,7 +391,9 @@ export function EventCard({
                       last={a.attendee_last}
                       size={32}
                     />
-                    <span>{a.attendee_first} {a.attendee_last}</span>
+                    <span>
+                      {a.attendee_first} {a.attendee_last}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -282,6 +401,6 @@ export function EventCard({
           </div>
         </div>
       )}
-    </div>
+    </article>
   );
 }

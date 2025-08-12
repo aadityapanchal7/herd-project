@@ -77,10 +77,6 @@ export function UniversityManager() {
         throw error
       }
 
-      toast({
-        title: "University added",
-        description: `${newUniversity.name} has been added successfully`,
-      })
 
       // Reset form and refresh list
       setNewUniversity({
@@ -111,10 +107,6 @@ export function UniversityManager() {
         throw error
       }
 
-      toast({
-        title: "University deleted",
-        description: "The university has been removed",
-      })
 
       // Refresh list
       fetchUniversities()

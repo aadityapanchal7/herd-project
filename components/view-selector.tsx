@@ -22,17 +22,6 @@ export function ViewSelector() {
         <span>My Events</span>
       </Link>
 
-
-      <Link
-        href="/event-recommender"
-        className={`flex items-center gap-1 px-4 py-2 rounded-full transition ${
-          path === '/event-recommender' ? activeClasses : inactiveClasses
-        }`}
-      >
-        <RecommenderIcon size={16} className="inline" />
-        <span>Event Recommender</span>
-      </Link>
-
       <Link
         href="/map"
         className={`flex items-center gap-1 px-4 py-2 rounded-full transition ${

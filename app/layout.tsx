@@ -8,7 +8,6 @@ import { AuthProvider } from "@/context/auth-context";
 import { EventsProvider } from "@/context/events-context";
 import { ViewProvider } from "@/context/view-context";
 import { ThemeProvider } from "@/context/theme-context";
-import { Toaster } from "@/components/ui/toaster";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -30,7 +29,6 @@ export default function RootLayout({
             <ViewProvider>
               <ThemeProvider>
                 {children}
-                <Toaster />
               </ThemeProvider>
             </ViewProvider>
           </EventsProvider>

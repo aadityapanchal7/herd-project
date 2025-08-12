@@ -1,304 +1,290 @@
-"use client"
+"use client";
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
-import type { Event, EventCategory, University } from "@/lib/types"
-import { useToast } from "@/components/ui/use-toast"
-import { useAuth } from "./auth-context"
-import { supabase } from "@/lib/supabase"
-import { getUniversities } from "@/lib/universities"
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
+import type { Event, EventCategory, University } from "@/lib/types";
+import { useToast } from "@/components/ui/use-toast";
+import { useAuth } from "./auth-context";
+import { supabase } from "@/lib/supabase";
+import { getUniversities } from "@/lib/universities";
 
 interface EventsContextType {
-  events: Event[]
-  filteredEvents: Event[]
-  searchTerm: string
-  selectedCategory: EventCategory
-  selectedDate: string // This will hold the YYYY-MM-DD string from the date picker or "All"
-  selectedUniversity: number | null
-  universities: University[]
-  setSearchTerm: (term: string) => void
-  setSelectedCategory: (category: EventCategory) => void
-  setSelectedDate: (date: string) => void
-  setSelectedUniversity: (universityId: number | null) => void
-  rsvpToEvent: (eventId: number) => Promise<void>
-  userRsvps: number[]
-  addUserRsvp: (eventId: number) => void
-  loading: boolean
-  refreshEvents: () => Promise<void>
-  error: string | null
-  updateEventAttendees: (eventId: number, attendeeCount: number) => void
+  events: (Event & { attendee_count?: number })[];
+  filteredEvents: (Event & { attendee_count?: number })[];
+  searchTerm: string;
+  selectedCategory: EventCategory;
+  selectedDate: string; // YYYY-MM-DD or "All"
+  selectedUniversity: number | null;
+  universities: University[];
+  setSearchTerm: (term: string) => void;
+  setSelectedCategory: (category: EventCategory) => void;
+  setSelectedDate: (date: string) => void;
+  setSelectedUniversity: (universityId: number | null) => void;
+  rsvpToEvent: (eventId: number) => Promise<void>;
+  userRsvps: number[];
+  addUserRsvp: (eventId: number) => void;
+  loading: boolean;
+  refreshEvents: () => Promise<void>;
+  error: string | null;
+  updateEventAttendees: (eventId: number, attendeeCount: number) => void;
 }
 
-const EventsContext = createContext<EventsContextType | undefined>(undefined)
+const EventsContext = createContext<EventsContextType | undefined>(undefined);
 
 export function EventsProvider({ children }: { children: ReactNode }) {
-  const [events, setEvents] = useState<Event[]>([])
-  const [filteredEvents, setFilteredEvents] = useState<Event[]>([])
-  const [searchTerm, setSearchTerm] = useState("")
-  const [selectedCategory, setSelectedCategory] = useState<EventCategory>("All")
-  const [selectedDate, setSelectedDate] = useState("All") // State for dashboard date filter
-  const [selectedUniversity, setSelectedUniversity] = useState<number | null>(null)
-  const [universities, setUniversities] = useState<University[]>([])
-  const [userRsvps, setUserRsvps] = useState<number[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const { toast } = useToast()
-  const { isAuthenticated, user } = useAuth()
+  const [events, setEvents] = useState<(Event & { attendee_count?: number })[]>([]);
+  const [filteredEvents, setFilteredEvents] = useState<(Event & { attendee_count?: number })[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<EventCategory>("All");
+  const [selectedDate, setSelectedDate] = useState("All");
+  const [selectedUniversity, setSelectedUniversity] = useState<number | null>(null);
+  const [universities, setUniversities] = useState<University[]>([]);
+  const [userRsvps, setUserRsvps] = useState<number[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+  const { isAuthenticated, user } = useAuth();
 
   // Fetch universities
   useEffect(() => {
     async function fetchUniversities() {
       try {
-        const data = await getUniversities()
-        setUniversities(data)
+        const data = await getUniversities();
+        setUniversities(data);
       } catch (error) {
-        console.error("Error fetching universities:", error)
+        console.error("Error fetching universities:", error);
       }
     }
+    fetchUniversities();
+  }, []);
 
-    fetchUniversities()
-  }, [])
-
-  // Set selected university based on user's university when logged in
+  // Preselect user's university
   useEffect(() => {
     if (isAuthenticated && user && universities.length > 0) {
-      const userUniversity = universities.find((u) => u.name === user.university)
-      if (userUniversity) {
-        setSelectedUniversity(userUniversity.id)
-      }
+      const userUniversity = universities.find((u) => u.name === user.university);
+      if (userUniversity) setSelectedUniversity(userUniversity.id);
     }
-  }, [isAuthenticated, user, universities])
+  }, [isAuthenticated, user, universities]);
 
-  // Fetch events on mount
+  // Initial data
   useEffect(() => {
-    fetchEvents()
-    if (isAuthenticated) {
-      fetchUserRsvps()
-    }
-  }, [isAuthenticated])
+    fetchEvents();
+    if (isAuthenticated) fetchUserRsvps();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
 
-  // Set up real-time subscription for event updates
+  // Realtime subscription for event updates (doesn't update attendee_count; we recompute on refresh)
   useEffect(() => {
-    // Subscribe to changes on the events table
     const subscription = supabase
       .channel("events-changes")
       .on(
         "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "events",
-        },
+        { event: "UPDATE", schema: "public", table: "events" },
         (payload) => {
-          console.log("Event updated:", payload)
-
-          // Update the event in our local state
           if (payload.new && typeof payload.new.id === "number") {
-            const updatedEvent = payload.new as Event
-
-            // Update the events array
-            setEvents((currentEvents) =>
-              currentEvents.map((event) => (event.id === updatedEvent.id ? { ...event, ...updatedEvent } : event)),
-            )
+            const updatedEvent = payload.new as Event;
+            setEvents((current) =>
+              current.map((ev) =>
+                ev.id === updatedEvent.id ? { ...ev, ...updatedEvent } : ev
+              )
+            );
           }
-        },
+        }
       )
-      .subscribe()
+      .subscribe();
 
-    // Clean up subscription on unmount
     return () => {
-      supabase.removeChannel(subscription)
-    }
-  }, [])
+      supabase.removeChannel(subscription);
+    };
+  }, []);
 
-  // --- Filter events when search term, category, date, or university changes ---
+  // Filtering
   useEffect(() => {
-    let filtered = [...events]
+    let filtered = [...events];
 
-    // Filter by university
     if (selectedUniversity !== null) {
-      filtered = filtered.filter((event) => event.university_id === selectedUniversity)
+      filtered = filtered.filter((event) => event.university_id === selectedUniversity);
     }
 
-    // Filter by search term
     if (searchTerm) {
+      const q = searchTerm.toLowerCase();
       filtered = filtered.filter(
         (event) =>
-          event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          event.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          event.location.toLowerCase().includes(searchTerm.toLowerCase()),
-      )
+          event.title.toLowerCase().includes(q) ||
+          event.description.toLowerCase().includes(q) ||
+          event.location.toLowerCase().includes(q)
+      );
     }
 
-    // Filter by category
     if (selectedCategory !== "All") {
-      filtered = filtered.filter((event) => event.category === selectedCategory)
+      filtered = filtered.filter((event) => event.category === selectedCategory);
     }
 
-    // --- Filter by date - FIXED LOGIC ---
     if (selectedDate !== "All") {
-      // selectedDate is the YYYY-MM-DD string from the <input type="date">
       filtered = filtered.filter((event) => {
         try {
-          // Parse the event's full date string into a Date object
-          // This assumes event.date is parseable (e.g., ISO string, "Month D, YYYY at HH:MM", etc.)
           const eventDateObj = new Date(event.date);
-
-          // Check if the parsed date is valid
-          if (isNaN(eventDateObj.getTime())) {
-             console.warn("Invalid date for event:", event.id, event.date);
-             return false; // Exclude events with unparseable dates
-          }
-
-          // Format that Date object to YYYY-MM-DD in Central Time for comparison
-          // Using 'en-CA' locale gives the YYYY-MM-DD format directly.
-          const formatter = new Intl.DateTimeFormat('en-CA', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            timeZone: 'America/Chicago', // Ensure comparison is in the correct timezone
+          if (isNaN(eventDateObj.getTime())) return false;
+          const formatter = new Intl.DateTimeFormat("en-CA", {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            timeZone: "America/Chicago",
           });
-
           const eventDateYMD = formatter.format(eventDateObj);
-
-          // Compare the formatted event date with the selected date (YYYY-MM-DD)
-          // This comparison is now between two YYYY-MM-DD strings, both representing
-          // the date in America/Chicago time.
           return eventDateYMD === selectedDate;
-        } catch (e) {
-          console.error("Error parsing or formatting date for filtering:", event.date, e);
-          // If parsing/formatting fails, exclude the event to prevent unexpected behavior
+        } catch {
           return false;
         }
       });
     }
-    // --- End Filter by date ---
 
-    setFilteredEvents(filtered)
-  }, [events, searchTerm, selectedCategory, selectedDate, selectedUniversity])
-  // --- End Filtering useEffect ---
+    setFilteredEvents(filtered);
+  }, [events, searchTerm, selectedCategory, selectedDate, selectedUniversity]);
 
+  // ---- Data fetchers ----
   const fetchEvents = async () => {
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
     try {
       if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-        setError("Database configuration is missing")
-        setLoading(false)
-        return
+        setError("Database configuration is missing");
+        setLoading(false);
+        return;
       }
 
-      const { data, error } = await supabase.from("events").select("*").order("date", { ascending: true })
+      const { data: eventsRaw, error } = await supabase
+        .from("events")
+        .select(`
+          id, title, category, description, date, time, location,
+          max_attendees, current_attendees, verified, created_by, creator_name,
+          latitude, longitude, university_id, is_private, image_url,
+          allow_rsvp, rsvp_limited, created_at
+        `)
+        .order("date", { ascending: true });
 
       if (error) {
-        console.error("Error fetching events:", error)
-        setError("Failed to load events")
+        console.error("Error fetching events:", error);
+        setError("Failed to load events");
         toast({
           title: "Error",
           description: "Failed to load events",
           variant: "destructive",
-        })
-        return
+        });
+        return;
       }
 
-      setEvents(data || [])
-      // Note: filteredEvents will be updated by the useEffect above
-      // No need to setFilteredEvents here directly anymore.
+      // Fetch RSVP rows and aggregate counts client-side
+      const { data: rsvpRows, error: rsvpErr } = await supabase
+        .from("event_rsvps")
+        .select("event_id");
+
+      if (rsvpErr) {
+        console.warn("Failed to fetch RSVP counts:", rsvpErr.message);
+        setEvents((eventsRaw ?? []) as (Event & { attendee_count?: number })[]);
+      } else {
+        const counts: Record<number, number> = {};
+        (rsvpRows ?? []).forEach((r) => {
+          counts[r.event_id] = (counts[r.event_id] || 0) + 1;
+        });
+
+        const merged = (eventsRaw ?? []).map((e) => ({
+          ...(e as Event),
+          attendee_count: counts[e.id] ?? 0,
+        }));
+
+        setEvents(merged);
+      }
     } catch (error) {
-      console.error("Error fetching events:", error)
-      setError("Failed to load events")
+      console.error("Error fetching events:", error);
+      setError("Failed to load events");
       toast({
         title: "Error",
         description: "Failed to load events",
         variant: "destructive",
-      })
+      });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const fetchUserRsvps = async () => {
     try {
-      if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-        return
-      }
+      if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return;
 
-      const { data: authData } = await supabase.auth.getUser()
+      const { data: authData } = await supabase.auth.getUser();
+      if (!authData.user) return;
 
-      if (!authData.user) {
-        return
-      }
-
-      const { data, error } = await supabase.from("event_rsvps").select("event_id").eq("user_id", authData.user.id)
+      const { data, error } = await supabase
+        .from("event_rsvps")
+        .select("event_id")
+        .eq("user_id", authData.user.id);
 
       if (error) {
-        console.error("Error fetching user RSVPs:", error)
-        return
+        console.error("Error fetching user RSVPs:", error);
+        return;
       }
 
-      setUserRsvps(data.map((rsvp) => rsvp.event_id) || [])
+      setUserRsvps(data?.map((rsvp) => rsvp.event_id) || []);
     } catch (error) {
-      console.error("Error fetching user RSVPs:", error)
+      console.error("Error fetching user RSVPs:", error);
     }
-  }
+  };
 
-  // Add a new function to update the user's RSVPs locally
+  // Helpers
   const addUserRsvp = (eventId: number) => {
     if (!userRsvps.includes(eventId)) {
-      setUserRsvps((prev) => [...prev, eventId])
+      setUserRsvps((prev) => [...prev, eventId]);
     }
-  }
+  };
 
-  // Add a function to update event attendees count
   const updateEventAttendees = (eventId: number, attendeeCount: number) => {
-    setEvents((currentEvents) =>
-      currentEvents.map((event) => (event.id === eventId ? { ...event, current_attendees: attendeeCount } : event)),
-    )
-  }
+    setEvents((current) =>
+      current.map((ev) => (ev.id === eventId ? { ...ev, attendee_count: attendeeCount } : ev))
+    );
+  };
 
-  const handleRsvpToEvent = async (eventId: number) => {
+  // Kept for compatibility; RSVP is handled inside EventCard now
+  const handleRsvpToEvent = async (_eventId: number) => {
     try {
       if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
         toast({
           title: "Configuration Error",
           description: "Database service is not properly configured.",
           variant: "destructive",
-        })
-        return
+        });
+        return;
       }
-
-      // This is now handled in the EventCard component directly
-      // We keep this method for backward compatibility
-      console.warn("rsvpToEvent in context is deprecated, use the direct method in EventCard")
+      console.warn("rsvpToEvent in context is deprecated; use the EventCard handler instead.");
     } catch (error) {
-      console.error("Error RSVPing to event:", error)
+      console.error("Error RSVPing to event:", error);
       toast({
         title: "RSVP Failed",
         description: "An unexpected error occurred",
         variant: "destructive",
-      })
+      });
     }
-  }
+  };
 
   const refreshEvents = async () => {
-    await fetchEvents()
+    await fetchEvents();
     if (isAuthenticated) {
-      await fetchUserRsvps()
+      await fetchUserRsvps();
     }
-  }
+  };
 
   return (
     <EventsContext.Provider
       value={{
         events,
-        filteredEvents, // This now uses the correctly filtered list
+        filteredEvents,
         searchTerm,
         selectedCategory,
-        selectedDate, // Provide the selectedDate state
+        selectedDate,
         selectedUniversity,
         universities,
         setSearchTerm,
         setSelectedCategory,
-        setSelectedDate, // Provide the setter for selectedDate
+        setSelectedDate,
         setSelectedUniversity,
         rsvpToEvent: handleRsvpToEvent,
         userRsvps,
@@ -311,13 +297,13 @@ export function EventsProvider({ children }: { children: ReactNode }) {
     >
       {children}
     </EventsContext.Provider>
-  )
+  );
 }
 
 export function useEvents() {
-  const context = useContext(EventsContext)
+  const context = useContext(EventsContext);
   if (context === undefined) {
-    throw new Error("useEvents must be used within an EventsProvider")
+    throw new Error("useEvents must be used within an EventsProvider");
   }
-  return context
+  return context;
 }

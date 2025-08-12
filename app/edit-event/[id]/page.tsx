@@ -25,7 +25,7 @@ import { getUniversityByName } from "@/lib/universities";
 import { VENUE_COORDS } from "@/lib/school-cords";
 import { motion } from "framer-motion";
 import type { Event } from "@/lib/types";
-import { saveInviteesAndPruneRsvps } from "@/lib/private-events";
+import { AvatarThumb } from "@/components/avatar-thumb";
 
 type Profile = {
   id: string;
@@ -50,7 +50,7 @@ export default function EditEventPage() {
   // tolerate numeric or uuid ids
   const eventKey: string | number = /^\d+$/.test(eventId) ? Number(eventId) : eventId;
 
-  // derive `school` key
+  // derive `school` key (extend as needed)
   let school = "";
   if (user?.university) {
     const uni = user.university.toLowerCase();
@@ -89,8 +89,14 @@ export default function EditEventPage() {
   const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
   const [profilesLoading, setProfilesLoading] = useState(false);
   const [profileSearch, setProfileSearch] = useState("");
+
+  // selected invitees (current state)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [seedProfiles, setSeedProfiles] = useState<Profile[]>([]); // profiles for existing invitees
+  // previously-saved invitees (loaded from DB) to compute removals
+  const [originalInviteeIds, setOriginalInviteeIds] = useState<Set<string>>(new Set());
+
+  // Profiles we fetched for existing invitees (if missing from directory)
+  const [seedProfiles, setSeedProfiles] = useState<Profile[]>([]);
 
   const isPrivate = !!event?.is_private;
 
@@ -120,7 +126,7 @@ export default function EditEventPage() {
 
         if (error) throw error;
 
-        // Check if user is the creator of this event
+        // Only the creator can edit
         if (data.created_by !== user?.id) {
           toast({
             title: "Access Denied",
@@ -133,7 +139,7 @@ export default function EditEventPage() {
 
         setEvent(data);
 
-        // Convert date format for input field
+        // date for input
         const eventDate = new Date(data.date);
         const formattedDate = eventDate.toISOString().split("T")[0];
 
@@ -154,7 +160,7 @@ export default function EditEventPage() {
           longitude: data.longitude || 0,
         });
 
-        // If private, load invitees from private_events and profiles
+        // If private, load invitees and their basic profiles
         if (data.is_private) {
           const { data: priv } = await supabase
             .from("private_events")
@@ -163,13 +169,15 @@ export default function EditEventPage() {
             .maybeSingle();
 
           const ids: string[] = priv?.invitee_user_ids ?? [];
-          setSelectedIds(new Set(ids));
+          const uniq = new Set(ids);
+          setSelectedIds(new Set(uniq));
+          setOriginalInviteeIds(new Set(uniq));
 
           if (ids.length > 0) {
             const { data: profs } = await supabase
               .from("profiles")
               .select("id, first_name, last_name, avatar_url")
-              .in("id", ids);
+              .in("id", Array.from(uniq));
 
             setSeedProfiles(uniqById((profs as Profile[]) ?? []));
           }
@@ -227,19 +235,22 @@ export default function EditEventPage() {
       return next;
     });
 
-    // Enrich seedProfiles so we can render name/avatar even if not in directory
+    // Seed profile cache so chips show names even if not in directory list
     if (profile) {
       setSeedProfiles((prev) => uniqById([...(prev ?? []), profile]));
     }
   }
 
+  // Search by name OR ID, but do NOT display the ID anywhere
   const filteredProfiles = useMemo(() => {
     const q = profileSearch.trim().toLowerCase();
     if (!q) return allProfiles;
     return allProfiles.filter((p) => {
       const first = (p.first_name || "").toLowerCase();
       const last = (p.last_name || "").toLowerCase();
-      return first.includes(q) || last.includes(q) || `${first} ${last}`.includes(q);
+      const full = `${first} ${last}`;
+      const id = (p.id || "").toLowerCase();
+      return first.includes(q) || last.includes(q) || full.includes(q) || id.includes(q);
     });
   }, [allProfiles, profileSearch]);
 
@@ -345,22 +356,56 @@ export default function EditEventPage() {
         .from("events")
         .update(updates)
         .eq("id", eventKey)
-        .eq("created_by", authData.user.id); // Ensure user can only update their own events
+        .eq("created_by", authData.user.id);
 
       if (error) throw error;
 
-      // Private: save invitees and prune RSVPs for removed users
+      // For private events: update invitees and prune removed RSVPs
       if (isPrivate) {
-        const nextInviteeIds = Array.from(selectedIds); // Set -> string[]
-        await saveInviteesAndPruneRsvps(eventKey, nextInviteeIds);
+        const newInvitees = Array.from(selectedIds); // string[]
+        const prevInvitees = Array.from(originalInviteeIds); // string[]
+
+        // Compute removed IDs
+        const removed = prevInvitees.filter((id) => !selectedIds.has(id));
+
+        // 1) Try updating existing private_events row
+        const { error: peUpdateErr, status } = await supabase
+          .from("private_events")
+          .update({ invitee_user_ids: newInvitees })
+          .eq("event_id", eventKey);
+
+        if (peUpdateErr && status !== 406) throw peUpdateErr;
+
+        // 2) If no row, insert (ensure creator_id set)
+        if (status === 406) {
+          const { error: peInsertErr } = await supabase
+            .from("private_events")
+            .insert({
+              event_id: eventKey,
+              creator_id: authData.user.id,
+              invitee_user_ids: newInvitees,
+            });
+          if (peInsertErr) throw peInsertErr;
+        }
+
+        // 3) Prune RSVPs for removed users
+        if (removed.length > 0) {
+          const { error: delErr } = await supabase
+            .from("event_rsvps")
+            .delete()
+            .eq("event_id", eventKey)
+            .in("user_id", removed);
+          if (delErr) throw delErr;
+
+          // Update local baseline so subsequent saves compute correctly
+          setOriginalInviteeIds(new Set(newInvitees));
+        }
       }
 
-      toast({
-        title: "Success",
-        description: "Event updated successfully!",
-      });
+
       router.push("/dashboard");
     } catch (err: any) {
+      console.error(err);
       setFormError(err.message || "Unexpected error.");
     } finally {
       setIsSubmitting(false);
@@ -618,13 +663,11 @@ export default function EditEventPage() {
                             key={p.id}
                             className="flex items-center gap-2 bg-zinc-100 rounded-full px-3 py-1"
                           >
-                            <img
-                              src={p.avatar_url || "/ut-default-avatar.jpg"}
-                              onError={(e) =>
-                                (e.currentTarget.src = "/ut-default-avatar.jpg")
-                              }
-                              alt=""
-                              className="w-6 h-6 rounded-full object-cover border"
+                            <AvatarThumb
+                              url={p.avatar_url}
+                              first={p.first_name}
+                              last={p.last_name}
+                              size={24}
                             />
                             <span className="text-sm">{name}</span>
                             <button
@@ -707,7 +750,7 @@ export default function EditEventPage() {
               <Input
                 value={profileSearch}
                 onChange={(e) => setProfileSearch(e.target.value)}
-                placeholder="Search by name…"
+                placeholder="Search by name or ID…"
                 className="pl-9"
               />
             </div>
@@ -731,17 +774,10 @@ export default function EditEventPage() {
                         onClick={() => toggleSelect(p.id, p)}
                       >
                         <div className="flex items-center gap-3">
-                          <img
-                            src={p.avatar_url || "/ut-default-avatar.jpg"}
-                            onError={(e) =>
-                              (e.currentTarget.src = "/ut-default-avatar.jpg")
-                            }
-                            alt=""
-                            className="w-9 h-9 rounded-full object-cover border"
-                          />
+                          <AvatarThumb url={p.avatar_url} first={p.first_name} last={p.last_name} size={36} />
                           <div className="flex flex-col">
                             <span className="font-medium">{full}</span>
-                            <span className="text-xs text-zinc-500">{p.id}</span>
+                            {/* Intentionally NOT rendering the ID to keep it private */}
                           </div>
                         </div>
                         <input

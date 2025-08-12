@@ -220,7 +220,7 @@ export function EventCardCreator({ event, onEventDeleted }: EventCardCreatorProp
 
       {creator_name && (
         <p className="text-sm text-gray-500 mb-2">
-          <span className="font-medium">Hosted by:</span> {creator_name}
+          <span className="font-medium">Created by:</span> {creator_name}
         </p>
       )}
 

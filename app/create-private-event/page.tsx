@@ -1,3 +1,4 @@
+// app/create-private-event/page.tsx
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -18,7 +19,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/context/auth-context";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, MapPin, Search as SearchIcon } from "lucide-react";
+import { Image as ImageIcon, AlertCircle, MapPin, Search as SearchIcon } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { parse, format } from "date-fns";
 import { getUniversityByName } from "@/lib/universities";
@@ -33,7 +34,7 @@ type Profile = {
   avatar_url: string | null;
 };
 
-const DEFAULT_MAX_ATTENDEES = 100; // keep non-null in events
+const DEFAULT_MAX_ATTENDEES = 1000; // keep non-null in events
 
 export default function CreatePrivateEventPage() {
   const { toast } = useToast();
@@ -57,8 +58,12 @@ export default function CreatePrivateEventPage() {
     date: "",
     time: "",
     location: "",
-    creator_name: "",
   });
+
+  // image upload (same as public)
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -96,6 +101,33 @@ export default function CreatePrivateEventPage() {
     setFormData((p) => ({ ...p, [name]: value }));
   };
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null;
+    setImageFile(file || null);
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setImagePreview(url);
+    } else {
+      setImagePreview(null);
+    }
+  };
+
+  // drag & drop handlers
+  const onDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+  const onDragLeave = () => setIsDragOver(false);
+  const onDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      const synthetic = { target: { files: [file] } } as unknown as React.ChangeEvent<HTMLInputElement>;
+      handleImageChange(synthetic);
+    }
+  };
+
   // load profiles into modal
   async function loadProfiles() {
     setProfilesLoading(true);
@@ -122,13 +154,16 @@ export default function CreatePrivateEventPage() {
     });
   }
 
+  // Search by name OR ID, but do NOT display ID in the UI
   const filteredProfiles = useMemo(() => {
     const q = profileSearch.trim().toLowerCase();
     if (!q) return allProfiles;
     return allProfiles.filter((p) => {
       const first = (p.first_name || "").toLowerCase();
       const last = (p.last_name || "").toLowerCase();
-      return first.includes(q) || last.includes(q) || `${first} ${last}`.includes(q);
+      const full = `${first} ${last}`;
+      const id = (p.id || "").toLowerCase();
+      return first.includes(q) || last.includes(q) || full.includes(q) || id.includes(q);
     });
   }, [allProfiles, profileSearch]);
 
@@ -141,9 +176,9 @@ export default function CreatePrivateEventPage() {
     e.preventDefault();
     setFormError(null);
 
-    const { title, category, description, date, time, location, creator_name } = formData;
+    const { title, category, description, date, time, location } = formData;
 
-    if (!title || !category || !description || !date || !time || !location || !creator_name) {
+    if (!title || !category || !description || !date || !time || !location) {
       setFormError("Please fill out all required fields.");
       return;
     }
@@ -169,11 +204,40 @@ export default function CreatePrivateEventPage() {
       return;
     }
 
+    // compute creator_name from current user profile
+    const creatorName =
+      `${user?.first_name ?? ""} ${user?.last_name ?? ""}`.trim() ||
+      authData.user.email?.split("@")[0] ||
+      "Unknown Host";
+
     // optional university id
     let universityId: number | null = null;
     if (user?.university) {
       const uni = await getUniversityByName(user.university);
       universityId = uni?.id ?? null;
+    }
+
+    // optional image upload
+    let imageUrl: string | null = null;
+    if (imageFile) {
+      try {
+        const path = `${authData.user.id}/${Date.now()}_${imageFile.name}`;
+        const bucket = supabase.storage.from("event-images");
+
+        const { error: uploadErr } = await bucket.upload(path, imageFile, {
+          upsert: false,
+          cacheControl: "3600",
+          contentType: imageFile.type,
+        });
+        if (uploadErr) throw uploadErr;
+
+        const { data: pub } = bucket.getPublicUrl(path);
+        imageUrl = pub.publicUrl;
+      } catch (err: any) {
+        setFormError(err.message || "Image upload failed.");
+        setIsSubmitting(false);
+        return;
+      }
     }
 
     try {
@@ -191,11 +255,12 @@ export default function CreatePrivateEventPage() {
           current_attendees: 0,
           verified: false,
           created_by: authData.user.id,
-          creator_name,
+          creator_name: creatorName,
           latitude: locationCoords?.latitude,
           longitude: locationCoords?.longitude,
           university_id: universityId,
-          is_private: true, // important
+          is_private: true,
+          image_url: imageUrl,
         })
         .select("id")
         .single();
@@ -216,7 +281,6 @@ export default function CreatePrivateEventPage() {
 
       if (peErr) throw peErr;
 
-      toast({ title: "Success", description: "Private event created and invites added!" });
       router.push("/dashboard");
     } catch (err: any) {
       console.error(err);
@@ -273,22 +337,6 @@ export default function CreatePrivateEventPage() {
             animate="visible"
             variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.07 } } }}
           >
-            {/* Host */}
-            <motion.div
-              variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } }}
-              className="space-y-2"
-            >
-              <Label htmlFor="creator_name">Name of Person/Organization Hosting Event</Label>
-              <Input
-                id="creator_name"
-                name="creator_name"
-                placeholder="e.g., Student Union, Jane Doe"
-                value={formData.creator_name}
-                onChange={handleChange}
-                required
-              />
-            </motion.div>
-
             {/* Title */}
             <motion.div
               variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } }}
@@ -346,7 +394,7 @@ export default function CreatePrivateEventPage() {
               />
             </motion.div>
 
-            {/* Date & Time */}
+            {/* Date & Time (click-anywhere opens via onFocus) */}
             <motion.div
               variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } }}
               className="grid grid-cols-1 md:grid-cols-2 gap-6"
@@ -443,6 +491,58 @@ export default function CreatePrivateEventPage() {
               <p className="text-xs text-gray-500">Only the creator and selected invitees will see this event.</p>
             </motion.div>
 
+            {/* Flyer / Poster - Drag & Drop */}
+            <div className="space-y-2">
+              <Label htmlFor="flyer">Event Flyer / Poster (optional)</Label>
+
+              <div
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && document.getElementById("flyer")?.click()}
+                onClick={() => document.getElementById("flyer")?.click()}
+                onDragOver={onDragOver}
+                onDragLeave={onDragLeave}
+                onDrop={onDrop}
+                className={[
+                  "rounded-lg border-2 border-dashed transition-colors cursor-pointer",
+                  "p-4 sm:p-5 md:p-6",
+                  "flex items-center gap-4 sm:gap-5",
+                  isDragOver ? "border-[var(--primary-color)] bg-[var(--primary-color)]/5" : "border-zinc-300 hover:border-zinc-400 bg-zinc-50"
+                ].join(" ")}
+              >
+                <div className="shrink-0">
+  {imagePreview ? (
+    <img
+      src={imagePreview}
+      alt="Flyer preview"
+      className="h-16 w-16 sm:h-20 sm:w-20 rounded-md object-cover border"
+    />
+  ) : (
+    <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-md bg-white border flex items-center justify-center">
+      <ImageIcon className="w-6 h-6 text-gray-400" />
+    </div>
+  )}
+</div>
+
+                <div className="flex-1">
+                  <p className="text-sm sm:text-base font-medium text-zinc-800">
+                    {imagePreview ? "Replace image" : "Select an image"}
+                  </p>
+                  <p className="text-xs sm:text-sm text-zinc-500">
+                    <span className="underline"></span>(max ~10 MB)
+                  </p>
+                </div>
+              </div>
+
+              <Input
+                id="flyer"
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="hidden"
+              />
+            </div>
+
             {/* Buttons */}
             <motion.div
               variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } }}
@@ -486,7 +586,7 @@ export default function CreatePrivateEventPage() {
               <Input
                 value={profileSearch}
                 onChange={(e) => setProfileSearch(e.target.value)}
-                placeholder="Search by name…"
+                placeholder="Search by name or ID…"
                 className="pl-9"
               />
             </div>
@@ -511,7 +611,7 @@ export default function CreatePrivateEventPage() {
                           <AvatarThumb url={p.avatar_url} first={p.first_name} last={p.last_name} size={36} />
                           <div className="flex flex-col">
                             <span className="font-medium">{full}</span>
-                            <span className="text-xs text-zinc-500">{p.id}</span>
+                            {/* ID is intentionally NOT displayed */}
                           </div>
                         </div>
                         <input type="checkbox" readOnly checked={checked} className="w-4 h-4 accent-[var(--primary-color)]" />

@@ -24,10 +24,6 @@ export function Header() {
 
   const handleLogout = () => {
     logout()
-    toast({
-      title: "Logged out",
-      description: "You have been successfully logged out.",
-    })
     router.push("/")
   }
 

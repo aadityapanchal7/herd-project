@@ -145,10 +145,6 @@ export default function MyEventsPage() {
     if (!error) {
       setRsvpedEvents((prev) => prev.filter((e) => e.id !== eventId))
       setFilteredEvents((prev) => prev.filter((e) => e.id !== eventId))
-      toast({
-        title: "RSVP Removed",
-        description: "Your RSVP was successfully removed.",
-      })
     } else {
       toast({
         title: "Error",
@@ -253,6 +249,7 @@ export default function MyEventsPage() {
                             event={event}
                             allowRemoveRSVP
                             onRemoveRSVP={() => handleRemoveRSVP(event.id)}
+                            linkLocation   // ← make location link to Google Maps here
                           />
                         </motion.div>
                       ))}
@@ -287,7 +284,7 @@ export default function MyEventsPage() {
                           layout
                         >
                           {/* NO remove rsvp for past */}
-                          <EventCard event={event} />
+                          <EventCard event={event} linkLocation /> {/* ← clickable here too */}
                         </motion.div>
                       ))}
                     </motion.div>

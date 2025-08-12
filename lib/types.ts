@@ -12,12 +12,15 @@ export interface Event {
   current_attendees: number
   verified: boolean
   created_by: string
-  created_at: string
+  created_at?: string | null;
   university_id?: number
   latitude?: number
   longitude?: number
   creator_name?: string;
   is_private: boolean;
+  image_url?: string | null;
+  allow_rsvp: boolean;     
+  rsvp_limited: boolean;
 
 }
 

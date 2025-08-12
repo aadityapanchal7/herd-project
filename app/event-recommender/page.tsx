@@ -260,7 +260,7 @@ export default function EventRecommenderPage() {
                     
                     {event.creator_name && (
                       <p className="text-sm text-gray-500 mb-2">
-                        <strong>Hosted by:</strong> {event.creator_name}
+                        <strong>Created by:</strong> {event.creator_name}
                       </p>
                     )}
                     
