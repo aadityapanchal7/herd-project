@@ -482,10 +482,10 @@ if (allow_rsvp_flag && rsvp_limited_flag) {
 
                 <div className="flex-1">
                   <p className="text-sm sm:text-base font-medium text-zinc-800">
-                    {imagePreview ? "Replace image" : "Drag & drop an image"}
+                    {imagePreview ? "Replace image" : "Select an image"}
                   </p>
                   <p className="text-xs sm:text-sm text-zinc-500">
-                    or <span className="underline">click to browse</span> • PNG, JPG, WEBP (max ~10 MB)
+                    <span className="underline"></span> (max ~10 MB)
                   </p>
                 </div>
               </div>

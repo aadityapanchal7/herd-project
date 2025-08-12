@@ -19,8 +19,8 @@ export interface Event {
   creator_name?: string;
   is_private: boolean;
   image_url?: string | null;
-  allow_rsvp: boolean;     
-  rsvp_limited: boolean;
+  allow_rsvp?: boolean | null;     
+  rsvp_limited?: boolean | null;
 
 }
 

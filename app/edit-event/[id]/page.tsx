@@ -18,7 +18,12 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/context/auth-context";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, MapPin, Search as SearchIcon } from "lucide-react";
+import {
+  AlertCircle,
+  MapPin,
+  Search as SearchIcon,
+  Image as ImageIcon,
+} from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { format } from "date-fns";
 import { getUniversityByName } from "@/lib/universities";
@@ -40,6 +45,8 @@ function uniqById<T extends { id: string }>(arr: T[]): T[] {
   return Array.from(m.values());
 }
 
+const UNLIMITED_CAP = 50_000;
+
 export default function EditEventPage() {
   const { toast } = useToast();
   const router = useRouter();
@@ -50,17 +57,16 @@ export default function EditEventPage() {
   // tolerate numeric or uuid ids
   const eventKey: string | number = /^\d+$/.test(eventId) ? Number(eventId) : eventId;
 
-  // derive `school` key (extend as needed)
+  // derive school key
   let school = "";
   if (user?.university) {
-    const uni = user.university.toLowerCase();
-    if (uni.includes("texas") && uni.includes("austin")) {
-      school = "ut_austin";
-    }
+    const u = user.university.toLowerCase();
+    if (u.includes("texas") && u.includes("austin")) school = "ut_austin";
   }
 
   const dateRef = useRef<HTMLInputElement>(null);
   const timeRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -69,38 +75,39 @@ export default function EditEventPage() {
     date: "",
     time: "",
     location: "",
-    maxAttendees: "100",
+    maxAttendees: "100", // used if public + limited
     creator_name: "",
   });
+
+  // RSVP settings (public only)
+  const [allowRsvp, setAllowRsvp] = useState<"yes" | "no">("yes");
+  const [limitMode, setLimitMode] = useState<"limited" | "unlimited">("limited");
+
+  // Image state
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null);
+  const [removeImage, setRemoveImage] = useState(false);
 
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [event, setEvent] = useState<Event | null>(null);
 
-  // chosen venue coords
-  const [locationCoords, setLocationCoords] = useState<{
-    latitude: number;
-    longitude: number;
-  } | null>(null);
+  const [locationCoords, setLocationCoords] = useState<{ latitude: number; longitude: number } | null>(null);
 
-  // ---------- Private invitee selector state ----------
+  // Private invitees
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
   const [profilesLoading, setProfilesLoading] = useState(false);
   const [profileSearch, setProfileSearch] = useState("");
-
-  // selected invitees (current state)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  // previously-saved invitees (loaded from DB) to compute removals
   const [originalInviteeIds, setOriginalInviteeIds] = useState<Set<string>>(new Set());
-
-  // Profiles we fetched for existing invitees (if missing from directory)
   const [seedProfiles, setSeedProfiles] = useState<Profile[]>([]);
 
   const isPrivate = !!event?.is_private;
 
-  // require login before showing form
+  // auth gate
   useEffect(() => {
     if (!loading && !isAuthenticated) {
       toast({
@@ -112,21 +119,14 @@ export default function EditEventPage() {
     }
   }, [loading, isAuthenticated, router, toast]);
 
-  // Fetch event data (+ existing invitees if private)
+  // load event
   useEffect(() => {
     async function fetchEvent() {
       if (!eventId || !isAuthenticated) return;
-
       try {
-        const { data, error } = await supabase
-          .from("events")
-          .select("*")
-          .eq("id", eventKey)
-          .single();
-
+        const { data, error } = await supabase.from("events").select("*").eq("id", eventKey).single();
         if (error) throw error;
 
-        // Only the creator can edit
         if (data.created_by !== user?.id) {
           toast({
             title: "Access Denied",
@@ -139,28 +139,37 @@ export default function EditEventPage() {
 
         setEvent(data);
 
-        // date for input
         const eventDate = new Date(data.date);
-        const formattedDate = eventDate.toISOString().split("T")[0];
+        const ymd = isNaN(eventDate.getTime()) ? "" : eventDate.toISOString().split("T")[0];
 
         setFormData((prev) => ({
           ...prev,
           title: data.title,
           category: data.category,
           description: data.description,
-          date: formattedDate,
+          date: ymd,
           time: data.time,
           location: data.location,
-          maxAttendees: data.max_attendees?.toString?.() ?? "100", // ignored for private
+          maxAttendees: data.max_attendees?.toString?.() ?? "100",
           creator_name: data.creator_name || "",
         }));
+
+        // RSVP flags from DB (public events only)
+        setAllowRsvp(data.allow_rsvp === false ? "no" : "yes");
+        setLimitMode(data.allow_rsvp === false ? "limited" : data.rsvp_limited ? "limited" : "unlimited");
+
+        // Image
+        const url = data.image_url ?? null;
+        setExistingImageUrl(url);
+        setImagePreview(url);
+        setRemoveImage(false);
 
         setLocationCoords({
           latitude: data.latitude || 0,
           longitude: data.longitude || 0,
         });
 
-        // If private, load invitees and their basic profiles
+        // private extras
         if (data.is_private) {
           const { data: priv } = await supabase
             .from("private_events")
@@ -183,7 +192,6 @@ export default function EditEventPage() {
           }
         }
 
-        // Preload directory list for invite modal (optional: paginate)
         setProfilesLoading(true);
         const { data: directory } = await supabase
           .from("profiles")
@@ -191,57 +199,53 @@ export default function EditEventPage() {
           .order("first_name", { ascending: true });
         setAllProfiles((directory as Profile[]) ?? []);
         setProfilesLoading(false);
-      } catch (error: any) {
-        console.error("Error fetching event:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load event data",
-          variant: "destructive",
-        });
+      } catch (err) {
+        console.error(err);
+        toast({ title: "Error", description: "Failed to load event data", variant: "destructive" });
         router.push("/dashboard");
       } finally {
         setIsLoading(false);
       }
     }
 
-    if (isAuthenticated && user) {
-      fetchEvent();
-    }
+    if (isAuthenticated && user) fetchEvent();
   }, [eventId, eventKey, isAuthenticated, user, router, toast]);
 
-  // whenever the school key or selected location changes, update coords
+  // venue coords
   useEffect(() => {
-    const coords = VENUE_COORDS[school]?.[formData.location] ?? null;
-    setLocationCoords(coords);
+    const c = VENUE_COORDS[school]?.[formData.location] ?? null;
+    setLocationCoords(c);
   }, [school, formData.location]);
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
+  // handlers
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // -------- Invitee helpers --------
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null;
+    setImageFile(file);
+    if (file) {
+      setImagePreview(URL.createObjectURL(file));
+      setRemoveImage(false);
+    } else {
+      setImagePreview(existingImageUrl ?? null);
+    }
+  };
+
   function openInviteModal() {
     setInviteModalOpen(true);
   }
-
   function toggleSelect(uid: string, profile?: Profile) {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(uid)) next.delete(uid);
-      else next.add(uid);
+      next.has(uid) ? next.delete(uid) : next.add(uid);
       return next;
     });
-
-    // Seed profile cache so chips show names even if not in directory list
-    if (profile) {
-      setSeedProfiles((prev) => uniqById([...(prev ?? []), profile]));
-    }
+    if (profile) setSeedProfiles((prev) => uniqById([...(prev ?? []), profile]));
   }
 
-  // Search by name OR ID, but do NOT display the ID anywhere
   const filteredProfiles = useMemo(() => {
     const q = profileSearch.trim().toLowerCase();
     if (!q) return allProfiles;
@@ -254,12 +258,10 @@ export default function EditEventPage() {
     });
   }, [allProfiles, profileSearch]);
 
-  // Derive selectedProfiles uniquely from selectedIds using directory+seed
   const selectedProfiles = useMemo(() => {
     const byId = new Map<string, Profile>();
     for (const p of allProfiles) byId.set(p.id, p);
     for (const p of seedProfiles) if (!byId.has(p.id)) byId.set(p.id, p);
-
     const arr: Profile[] = [];
     for (const id of selectedIds) {
       const p = byId.get(id);
@@ -268,49 +270,42 @@ export default function EditEventPage() {
     return uniqById(arr);
   }, [allProfiles, seedProfiles, selectedIds]);
 
-  // -------- Submit / Save --------
+  // submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
     setIsSubmitting(true);
 
-    const {
-      title,
-      category,
-      description,
-      date,
-      time,
-      location,
-      maxAttendees,
-      creator_name,
-    } = formData;
+    const { title, category, description, date, time, location, maxAttendees, creator_name } = formData;
 
-    // basic validation
     if (!title || !category || !description || !date || !time || !location || !creator_name) {
       setFormError("Please fill out all required fields.");
       setIsSubmitting(false);
       return;
     }
 
-    // validate per public/private
-    let maxAtt: number | null = null;
+    // validate public/private
+    let computedMax: number | null = null;
     if (!isPrivate) {
-      const parsed = parseInt(maxAttendees, 10);
-      if (isNaN(parsed) || parsed < 1) {
-        setFormError("Please enter a valid maximum number of attendees.");
-        setIsSubmitting(false);
-        return;
+      if (allowRsvp === "yes") {
+        if (limitMode === "unlimited") {
+          computedMax = UNLIMITED_CAP;
+        } else {
+          const parsed = parseInt(maxAttendees, 10);
+          if (isNaN(parsed) || parsed < 1) {
+            setFormError("Please enter a valid maximum number of attendees.");
+            setIsSubmitting(false);
+            return;
+          }
+          computedMax = parsed;
+        }
       }
-      maxAtt = parsed;
-    } else {
-      if (selectedIds.size === 0) {
-        setFormError("Select at least one invitee.");
-        setIsSubmitting(false);
-        return;
-      }
+    } else if (selectedIds.size === 0) {
+      setFormError("Select at least one invitee.");
+      setIsSubmitting(false);
+      return;
     }
 
-    // re-check auth from Supabase
     const { data: authData, error: authErr } = await supabase.auth.getUser();
     if (authErr || !authData.user) {
       setFormError("Authentication error. Please log in again.");
@@ -318,20 +313,33 @@ export default function EditEventPage() {
       return;
     }
 
-    // look up university_id if available
     let universityId: number | null = null;
     if (user) {
       const uni = await getUniversityByName(user.university);
       universityId = uni?.id ?? null;
     }
 
-    // update the event
     try {
       const parsedDate = new Date(date);
       if (isNaN(parsedDate.getTime())) {
         setFormError("Please select a valid date.");
         setIsSubmitting(false);
         return;
+      }
+
+      // image upload (if new)
+      let imageUrlToSave: string | null | undefined = undefined;
+      if (imageFile) {
+        const path = `${authData.user.id}/${Date.now()}_${imageFile.name}`;
+        const bucket = supabase.storage.from("event-images");
+        const { error: uploadErr } = await bucket.upload(path, imageFile, {
+          upsert: false,
+          cacheControl: "3600",
+          contentType: imageFile.type,
+        });
+        if (uploadErr) throw uploadErr;
+        const { data: pub } = bucket.getPublicUrl(path);
+        imageUrlToSave = pub.publicUrl;
       }
 
       const updates: any = {
@@ -347,9 +355,21 @@ export default function EditEventPage() {
         university_id: universityId,
       };
 
-      // Public: update max_attendees; Private: leave unchanged
+      // image field precedence
+      if (typeof imageUrlToSave !== "undefined") {
+        updates.image_url = imageUrlToSave;
+      } else if (removeImage) {
+        updates.image_url = null;
+      }
+
       if (!isPrivate) {
-        updates.max_attendees = maxAtt;
+        const allow = allowRsvp === "yes";
+        updates.allow_rsvp = allow;
+        updates.rsvp_limited = allow ? limitMode === "limited" : false; // never null
+
+        if (allow) {
+          updates.max_attendees = computedMax ?? UNLIMITED_CAP;
+        }
       }
 
       const { error } = await supabase
@@ -360,15 +380,12 @@ export default function EditEventPage() {
 
       if (error) throw error;
 
-      // For private events: update invitees and prune removed RSVPs
+      // private invitees save + prune
       if (isPrivate) {
-        const newInvitees = Array.from(selectedIds); // string[]
-        const prevInvitees = Array.from(originalInviteeIds); // string[]
-
-        // Compute removed IDs
+        const newInvitees = Array.from(selectedIds);
+        const prevInvitees = Array.from(originalInviteeIds);
         const removed = prevInvitees.filter((id) => !selectedIds.has(id));
 
-        // 1) Try updating existing private_events row
         const { error: peUpdateErr, status } = await supabase
           .from("private_events")
           .update({ invitee_user_ids: newInvitees })
@@ -376,7 +393,6 @@ export default function EditEventPage() {
 
         if (peUpdateErr && status !== 406) throw peUpdateErr;
 
-        // 2) If no row, insert (ensure creator_id set)
         if (status === 406) {
           const { error: peInsertErr } = await supabase
             .from("private_events")
@@ -388,7 +404,6 @@ export default function EditEventPage() {
           if (peInsertErr) throw peInsertErr;
         }
 
-        // 3) Prune RSVPs for removed users
         if (removed.length > 0) {
           const { error: delErr } = await supabase
             .from("event_rsvps")
@@ -397,11 +412,9 @@ export default function EditEventPage() {
             .in("user_id", removed);
           if (delErr) throw delErr;
 
-          // Update local baseline so subsequent saves compute correctly
           setOriginalInviteeIds(new Set(newInvitees));
         }
       }
-
 
       router.push("/dashboard");
     } catch (err: any) {
@@ -413,19 +426,11 @@ export default function EditEventPage() {
   };
 
   if (loading || !isAuthenticated || isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        Loading…
-      </div>
-    );
+    return <div className="min-h-screen flex items-center justify-center">Loading…</div>;
   }
 
   if (!event) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        Event not found
-      </div>
-    );
+    return <div className="min-h-screen flex items-center justify-center">Event not found</div>;
   }
 
   return (
@@ -438,9 +443,7 @@ export default function EditEventPage() {
           transition={{ duration: 0.5 }}
           className="bg-white p-6 rounded-lg shadow"
         >
-          <h1 className="text-2xl font-bold university-primary-text mb-6">
-            Edit Event
-          </h1>
+          <h1 className="text-2xl font-bold university-primary-text mb-6">Edit Event</h1>
 
           {formError && (
             <Alert variant="destructive" className="mb-4">
@@ -455,22 +458,11 @@ export default function EditEventPage() {
             className="space-y-6"
             initial="hidden"
             animate="visible"
-            variants={{
-              hidden: {},
-              visible: { transition: { staggerChildren: 0.07 } },
-            }}
+            variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.07 } } }}
           >
             {/* Host name */}
-            <motion.div
-              variants={{
-                hidden: { opacity: 0, y: 16 },
-                visible: { opacity: 1, y: 0 },
-              }}
-              className="space-y-2"
-            >
-              <Label htmlFor="creator_name">
-                Name of Person/Organization Hosting Event
-              </Label>
+            <FormBlock>
+              <Label htmlFor="creator_name">Name of Person/Organization Hosting Event</Label>
               <Input
                 id="creator_name"
                 name="creator_name"
@@ -479,16 +471,10 @@ export default function EditEventPage() {
                 onChange={handleChange}
                 required
               />
-            </motion.div>
+            </FormBlock>
 
             {/* Title */}
-            <motion.div
-              variants={{
-                hidden: { opacity: 0, y: 16 },
-                visible: { opacity: 1, y: 0 },
-              }}
-              className="space-y-2"
-            >
+            <FormBlock>
               <Label htmlFor="title">Event Title</Label>
               <Input
                 id="title"
@@ -498,22 +484,14 @@ export default function EditEventPage() {
                 onChange={handleChange}
                 required
               />
-            </motion.div>
+            </FormBlock>
 
             {/* Category */}
-            <motion.div
-              variants={{
-                hidden: { opacity: 0, y: 16 },
-                visible: { opacity: 1, y: 0 },
-              }}
-              className="space-y-2"
-            >
+            <FormBlock>
               <Label htmlFor="category">Category</Label>
               <Select
                 value={formData.category}
-                onValueChange={(value) =>
-                  setFormData((prev) => ({ ...prev, category: value }))
-                }
+                onValueChange={(value) => setFormData((prev) => ({ ...prev, category: value }))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select a category" />
@@ -525,16 +503,10 @@ export default function EditEventPage() {
                   <SelectItem value="Arts">Arts</SelectItem>
                 </SelectContent>
               </Select>
-            </motion.div>
+            </FormBlock>
 
             {/* Description */}
-            <motion.div
-              variants={{
-                hidden: { opacity: 0, y: 16 },
-                visible: { opacity: 1, y: 0 },
-              }}
-              className="space-y-2"
-            >
+            <FormBlock>
               <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"
@@ -545,56 +517,93 @@ export default function EditEventPage() {
                 rows={4}
                 required
               />
-            </motion.div>
+            </FormBlock>
 
-            {/* Date and Time */}
-            <motion.div
-              variants={{
-                hidden: { opacity: 0, y: 16 },
-                visible: { opacity: 1, y: 0 },
-              }}
-              className="grid grid-cols-1 md:grid-cols-2 gap-4"
-            >
-              <div className="space-y-2">
-                <Label htmlFor="date">Date</Label>
-                <Input
-                  id="date"
-                  name="date"
-                  type="date"
-                  ref={dateRef}
-                  value={formData.date}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="time">Time</Label>
-                <Input
-                  id="time"
-                  name="time"
-                  type="time"
-                  ref={timeRef}
-                  value={formData.time}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-            </motion.div>
+           {/* Date and Time */}
+<motion.div
+  variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } }}
+  className="grid grid-cols-1 md:grid-cols-2 gap-4"
+>
+  <div className="space-y-2">
+    <Label htmlFor="date">Date</Label>
+    <div
+      className="relative"
+      role="button"
+      tabIndex={0}
+      onClick={() => {
+        const el = dateRef.current;
+        if (!el) return;
+        // @ts-ignore - showPicker is supported on modern browsers
+        if (typeof el.showPicker === "function") el.showPicker();
+        else el.focus();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          const el = dateRef.current;
+          if (!el) return;
+          // @ts-ignore
+          if (typeof el.showPicker === "function") el.showPicker();
+          else el.focus();
+        }
+      }}
+    >
+      <Input
+        id="date"
+        name="date"
+        type="date"
+        ref={dateRef}
+        value={formData.date}
+        onChange={handleChange}
+        required
+        className="cursor-pointer"
+      />
+    </div>
+  </div>
+
+  <div className="space-y-2">
+    <Label htmlFor="time">Time</Label>
+    <div
+      className="relative"
+      role="button"
+      tabIndex={0}
+      onClick={() => {
+        const el = timeRef.current;
+        if (!el) return;
+        // @ts-ignore
+        if (typeof el.showPicker === "function") el.showPicker();
+        else el.focus();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          const el = timeRef.current;
+          if (!el) return;
+          // @ts-ignore
+          if (typeof el.showPicker === "function") el.showPicker();
+          else el.focus();
+        }
+      }}
+    >
+      <Input
+        id="time"
+        name="time"
+        type="time"
+        ref={timeRef}
+        value={formData.time}
+        onChange={handleChange}
+        required
+        className="cursor-pointer"
+      />
+    </div>
+  </div>
+</motion.div>
+
 
             {/* Location */}
-            <motion.div
-              variants={{
-                hidden: { opacity: 0, y: 16 },
-                visible: { opacity: 1, y: 0 },
-              }}
-              className="space-y-2"
-            >
+            <FormBlock>
               <Label htmlFor="location">Location</Label>
               <Select
                 value={formData.location}
-                onValueChange={(value) =>
-                  setFormData((prev) => ({ ...prev, location: value }))
-                }
+                onValueChange={(value) => setFormData((prev) => ({ ...prev, location: value }))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select a location" />
@@ -610,65 +619,188 @@ export default function EditEventPage() {
                   ))}
                 </SelectContent>
               </Select>
-            </motion.div>
+            </FormBlock>
 
-            {/* Public: Maximum Attendees | Private: Invitee Selector */}
-            {!isPrivate ? (
-              <motion.div
-                variants={{
-                  hidden: { opacity: 0, y: 16 },
-                  visible: { opacity: 1, y: 0 },
-                }}
-                className="space-y-2"
-              >
-                <Label htmlFor="maxAttendees">Maximum Attendees</Label>
-                <Input
-                  id="maxAttendees"
-                  name="maxAttendees"
-                  type="number"
-                  min="1"
-                  placeholder="100"
-                  value={formData.maxAttendees}
-                  onChange={handleChange}
-                  required
-                />
-              </motion.div>
-            ) : (
-              <motion.div
-                variants={{
-                  hidden: { opacity: 0, y: 16 },
-                  visible: { opacity: 1, y: 0 },
-                }}
-                className="space-y-2"
-              >
+            {/* Image uploader */}
+        {/* Image uploader – mobile-first */}
+<div className="space-y-2">
+  <Label>Event Flyer / Poster (optional)</Label>
+
+  <div className="flex flex-col sm:flex-row sm:items-start gap-3">
+    {/* Clickable drop area / preview */}
+    <label
+      htmlFor="flyer"
+      className="group relative w-full sm:w-64 overflow-hidden rounded-lg border-2 border-dashed border-zinc-300 hover:border-zinc-400 bg-white transition-colors"
+    >
+      {/* Keep a steady ratio so it doesn’t jump around on mobile */}
+      <div className="aspect-video w-full">
+        {imagePreview ? (
+          <img
+            src={imagePreview}
+            alt="Flyer preview"
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className="h-full w-full grid place-items-center">
+            <div className="text-center">
+              <div className="mx-auto mb-2 h-10 w-10 rounded-md border grid place-items-center">
+                {/* your ImageIcon import */}
+                <ImageIcon className="h-5 w-5 text-zinc-400" />
+              </div>
+              <p className="text-sm font-medium text-zinc-800">Select Image</p>
+              <p className="text-xs text-zinc-500">PNG/JPG, up to ~10MB</p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Subtle “Change” overlay on hover (desktop) */}
+      <div className="pointer-events-none absolute inset-0 hidden sm:flex items-center justify-center bg-black/0 group-hover:bg-black/20 transition-colors">
+        <span className="rounded-md bg-white/90 px-2 py-1 text-xs font-medium text-zinc-700 shadow">
+          Change
+        </span>
+      </div>
+
+      <Input
+        id="flyer"
+        type="file"
+        accept="image/*"
+        className="sr-only"
+        onChange={handleImageChange}
+      />
+    </label>
+
+    {/* Actions: full-width row on mobile, vertical on desktop */}
+    <div className="flex w-full sm:w-auto gap-2 sm:flex-col">
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => document.getElementById("flyer")?.click()}
+        className="w-full sm:w-32"
+      >
+        Change
+      </Button>
+      <Button
+        type="button"
+        variant="destructive"
+        size="sm"
+        onClick={() => {
+          setImageFile(null);
+          setImagePreview(null);
+          setExistingImageUrl(null); // if you keep server image url
+        }}
+        className="w-full sm:w-32"
+      >
+        Remove
+      </Button>
+    </div>
+  </div>
+
+  <p className="text-xs text-zinc-500">
+  </p>
+</div>
+
+
+            {/* RSVP Settings (public only) */}
+            {!isPrivate && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Allow RSVPs?</Label>
+                  <div className="flex gap-3">
+                    <Button
+                      type="button"
+                      variant={allowRsvp === "yes" ? "default" : "outline"}
+                      className={
+                        allowRsvp === "yes"
+                          ? "university-button text-white hover:opacity-100"
+                          : "border-[var(--primary-color)] text-[var(--primary-color)] hover:opacity-100"
+                      }
+                      onClick={() => setAllowRsvp("yes")}
+                    >
+                      Yes
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={allowRsvp === "no" ? "default" : "outline"}
+                      className={
+                        allowRsvp === "no"
+                          ? "university-button text-white hover:opacity-100"
+                          : "border-[var(--primary-color)] text-[var(--primary-color)] hover:opacity-100"
+                      }
+                      onClick={() => setAllowRsvp("no")}
+                    >
+                      No
+                    </Button>
+                  </div>
+                </div>
+
+                {allowRsvp === "yes" && (
+                  <div className="space-y-2">
+                    <Label>RSVP Limit</Label>
+                    <div className="flex gap-3">
+                      <Button
+                        type="button"
+                        variant={limitMode === "limited" ? "default" : "outline"}
+                        className={
+                          limitMode === "limited"
+                            ? "university-button text-white hover:opacity-100"
+                            : "border-[var(--primary-color)] text-[var(--primary-color)] hover:opacity-100"
+                        }
+                        onClick={() => setLimitMode("limited")}
+                      >
+                        Limited
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={limitMode === "unlimited" ? "default" : "outline"}
+                        className={
+                          limitMode === "unlimited"
+                            ? "university-button text-white hover:opacity-100"
+                            : "border-[var(--primary-color)] text-[var(--primary-color)] hover:opacity-100"
+                        }
+                        onClick={() => setLimitMode("unlimited")}
+                      >
+                        No limit
+                      </Button>
+                    </div>
+
+                    {limitMode === "limited" && (
+                      <div className="mt-3">
+                        <Label htmlFor="maxAttendees">Maximum Attendees</Label>
+                        <Input
+                          id="maxAttendees"
+                          name="maxAttendees"
+                          type="number"
+                          min="1"
+                          placeholder="100"
+                          value={formData.maxAttendees}
+                          onChange={handleChange}
+                          required
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Private: Invitee selector */}
+            {isPrivate && (
+              <FormBlock>
                 <Label>Invitees</Label>
                 <div className="flex items-center gap-3 flex-wrap">
-                  <Button
-                    type="button"
-                    className="university-button text-white"
-                    onClick={openInviteModal}
-                  >
+                  <Button type="button" className="university-button text-white" onClick={openInviteModal}>
                     Select People ({selectedIds.size})
                   </Button>
 
-                  {/* Chips (max 6 + +X) */}
                   {selectedProfiles.length > 0 && (
                     <div className="flex flex-wrap gap-2">
                       {selectedProfiles.slice(0, 6).map((p) => {
-                        const name =
-                          `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim() ||
-                          "Unnamed User";
+                        const name = `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim() || "Unnamed User";
                         return (
-                          <div
-                            key={p.id}
-                            className="flex items-center gap-2 bg-zinc-100 rounded-full px-3 py-1"
-                          >
-                            <AvatarThumb
-                              url={p.avatar_url}
-                              first={p.first_name}
-                              last={p.last_name}
-                              size={24}
-                            />
+                          <div key={p.id} className="flex items-center gap-2 bg-zinc-100 rounded-full px-3 py-1">
+                            <AvatarThumb url={p.avatar_url} first={p.first_name} last={p.last_name} size={24} />
                             <span className="text-sm">{name}</span>
                             <button
                               type="button"
@@ -682,32 +814,21 @@ export default function EditEventPage() {
                         );
                       })}
                       {selectedProfiles.length > 6 && (
-                        <span className="text-sm text-zinc-600">
-                          +{selectedProfiles.length - 6} more
-                        </span>
+                        <span className="text-sm text-zinc-600">+{selectedProfiles.length - 6} more</span>
                       )}
                     </div>
                   )}
                 </div>
-                <p className="text-xs text-gray-500">
-                  Only the creator and selected invitees will see this event.
-                </p>
-              </motion.div>
+                <p className="text-xs text-gray-500">Only the creator and selected invitees will see this event.</p>
+              </FormBlock>
             )}
 
-            {/* Submit Button */}
+            {/* Submit */}
             <motion.div
-              variants={{
-                hidden: { opacity: 0, y: 16 },
-                visible: { opacity: 1, y: 0 },
-              }}
+              variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } }}
               className="flex gap-4 pt-4"
             >
-              <Button
-                type="submit"
-                className="university-button flex-1"
-                disabled={isSubmitting}
-              >
+              <Button type="submit" className="university-button flex-1" disabled={isSubmitting}>
                 {isSubmitting ? "Updating..." : "Update Event"}
               </Button>
               <Button
@@ -723,16 +844,13 @@ export default function EditEventPage() {
         </motion.div>
       </main>
 
-      {/* Invite Picker Modal (only relevant if private) */}
+      {/* Invite Picker Modal */}
       {isPrivate && inviteModalOpen && (
         <div
           className="fixed inset-0 z-[11000] bg-black/40 flex items-center justify-center"
           onClick={() => setInviteModalOpen(false)}
         >
-          <div
-            className="bg-white rounded-lg p-6 w-full max-w-lg shadow-lg"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="bg-white rounded-lg p-6 w-full max-w-lg shadow-lg" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3">
               <h4 className="font-semibold text-lg">Select Invitees</h4>
               <button
@@ -763,9 +881,7 @@ export default function EditEventPage() {
               ) : (
                 <ul className="divide-y">
                   {filteredProfiles.map((p) => {
-                    const full =
-                      `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim() ||
-                      "Unnamed User";
+                    const full = `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim() || "Unnamed User";
                     const checked = selectedIds.has(p.id);
                     return (
                       <li
@@ -777,15 +893,9 @@ export default function EditEventPage() {
                           <AvatarThumb url={p.avatar_url} first={p.first_name} last={p.last_name} size={36} />
                           <div className="flex flex-col">
                             <span className="font-medium">{full}</span>
-                            {/* Intentionally NOT rendering the ID to keep it private */}
                           </div>
                         </div>
-                        <input
-                          type="checkbox"
-                          readOnly
-                          checked={checked}
-                          className="w-4 h-4 accent-[var(--primary-color)]"
-                        />
+                        <input type="checkbox" readOnly checked={checked} className="w-4 h-4 accent-[var(--primary-color)]" />
                       </li>
                     );
                   })}
@@ -803,10 +913,7 @@ export default function EditEventPage() {
               >
                 Clear
               </Button>
-              <Button
-                className="university-button text-white"
-                onClick={() => setInviteModalOpen(false)}
-              >
+              <Button className="university-button text-white" onClick={() => setInviteModalOpen(false)}>
                 Done ({selectedIds.size} selected)
               </Button>
             </div>
@@ -814,5 +921,13 @@ export default function EditEventPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function FormBlock({ children }: { children: React.ReactNode }) {
+  return (
+    <motion.div variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } }} className="space-y-2">
+      {children}
+    </motion.div>
   );
 }
