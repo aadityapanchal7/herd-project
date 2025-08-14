@@ -2,12 +2,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CalendarIcon, MapPin, Users } from "lucide-react";
+import { CalendarIcon, MapPin, Users, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/auth-context";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
+import { useRouter } from "next/navigation";
 import type { Event } from "@/lib/types";
 import { AvatarThumb } from "@/components/avatar-thumb";
 import { VENUE_COORDS } from "@/lib/school-cords";
@@ -52,6 +53,7 @@ export function EventCard({
 
   const { isAuthenticated, user } = useAuth();
   const { toast } = useToast();
+  const router = useRouter();
 
   const isOwner = !!user && created_by === user.id;
 
@@ -328,25 +330,35 @@ export function EventCard({
           )}
 
           {/* right CTA */}
-          {allowRemoveRSVP && onRemoveRSVP ? (
+          <div className="flex gap-2">
             <Button
               variant="outline"
-              className="border-rose-700 text-rose-700 hover:bg-rose-600 hover:text-white font-semibold"
-              onClick={onRemoveRSVP}
+              size="sm"
+              onClick={() => router.push(`/events/${id}`)}
+              className="flex items-center gap-1"
             >
-              Remove RSVP
+              <ExternalLink className="h-3 w-3" />
+              View Details
             </Button>
-          ) : allow_rsvp ? (
-            <Button
-              className="university-button px-5 py-5"
-              onClick={handleRSVP}
-              disabled={disabled || isRsvping}
-            >
-              {isRsvping ? "Processing…" : "RSVP"}
-            </Button>
-          ) : (
-            <span /> // RSVPs disabled → no CTA
-          )}
+            
+            {allowRemoveRSVP && onRemoveRSVP ? (
+              <Button
+                variant="outline"
+                className="border-rose-700 text-rose-700 hover:bg-rose-600 hover:text-white font-semibold"
+                onClick={onRemoveRSVP}
+              >
+                Remove RSVP
+              </Button>
+            ) : allow_rsvp ? (
+              <Button
+                className="university-button px-5 py-5"
+                onClick={handleRSVP}
+                disabled={disabled || isRsvping}
+              >
+                {isRsvping ? "Processing…" : "RSVP"}
+              </Button>
+            ) : null}
+          </div>
         </div>
       </div>
 

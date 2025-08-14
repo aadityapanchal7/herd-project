@@ -81,3 +81,71 @@ CREATE POLICY "Authenticated users can insert RSVPs"
 CREATE POLICY "Users can delete their own RSVPs"
   ON event_rsvps FOR DELETE
   USING (auth.uid() = user_id);
+
+-- Create event_chats table
+CREATE TABLE event_chats (
+  id SERIAL PRIMARY KEY,
+  event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  name TEXT NOT NULL DEFAULT 'Event Chat',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(event_id)
+);
+
+-- Create chat_messages table
+CREATE TABLE chat_messages (
+  id SERIAL PRIMARY KEY,
+  chat_id INTEGER NOT NULL REFERENCES event_chats(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  message TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Enable RLS for chat tables
+ALTER TABLE event_chats ENABLE ROW LEVEL SECURITY;
+ALTER TABLE chat_messages ENABLE ROW LEVEL SECURITY;
+
+-- Event chats policies
+CREATE POLICY "Event chats are viewable by everyone"
+  ON event_chats FOR SELECT
+  USING (true);
+
+CREATE POLICY "Event creators can insert event chats"
+  ON event_chats FOR INSERT
+  WITH CHECK (
+    auth.uid() IN (
+      SELECT created_by FROM events WHERE id = event_id
+    )
+  );
+
+CREATE POLICY "Event creators can update their event chats"
+  ON event_chats FOR UPDATE
+  USING (
+    auth.uid() IN (
+      SELECT created_by FROM events WHERE id = event_id
+    )
+  );
+
+CREATE POLICY "Event creators can delete their event chats"
+  ON event_chats FOR DELETE
+  USING (
+    auth.uid() IN (
+      SELECT created_by FROM events WHERE id = event_id
+    )
+  );
+
+-- Chat messages policies
+CREATE POLICY "Chat messages are viewable by everyone"
+  ON chat_messages FOR SELECT
+  USING (true);
+
+CREATE POLICY "Authenticated users can insert chat messages"
+  ON chat_messages FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own chat messages"
+  ON chat_messages FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own chat messages"
+  ON chat_messages FOR DELETE
+  USING (auth.uid() = user_id);
