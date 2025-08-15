@@ -1,5 +1,6 @@
 "use client"
 
+import Image from 'next/image'
 import Link from "next/link"
 import { Mail, LogOut, User, PlusCircle, CalendarCheck, Users, Calendar, Heart } from "lucide-react"
 import { IconWrapper } from "@/components/icons/IconWrapper"
@@ -39,17 +40,15 @@ export function Header() {
         <button
           onClick={() => router.push(isAuthenticated ? "/dashboard" : "/")}
           style={{ cursor: "pointer" }}
-          className="flex items-center"
+          className="flex items-center gap-3"
         >
-          <h1 className="text-2xl font-semibold university-primary-text">Herd</h1>
-          {isAuthenticated && (
-            <>
-              <h1 className="text-2xl hidden font-semibold university-primary-text md:pl-1.5">at</h1>
-              <span className="text-2xl hidden font-semibold university-primary-text md:pl-1.5">
-                {user?.university}
-              </span>
-            </>
-          )}
+          <Image src="/herd-logo.jpg" alt="Herd" width={40} height={40} className="rounded-md" />
+          <div className="flex flex-col leading-tight">
+            <span className="text-base font-semibold university-primary-text">Herd</span>
+            {isAuthenticated && (
+              <span className="text-xs text-muted-foreground">{user?.university}</span>
+            )}
+          </div>
         </button>
 
         <div className="flex items-center gap-4">
