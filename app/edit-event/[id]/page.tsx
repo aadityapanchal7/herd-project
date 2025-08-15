@@ -77,6 +77,7 @@ export default function EditEventPage() {
     location: "",
     maxAttendees: "100", // used if public + limited
     creator_name: "",
+    time_zone: ""
   });
 
   // RSVP settings (public only)
@@ -152,6 +153,7 @@ export default function EditEventPage() {
           location: data.location,
           maxAttendees: data.max_attendees?.toString?.() ?? "100",
           creator_name: data.creator_name || "",
+          time_zone: data.time_zone || "",
         }));
 
         // RSVP flags from DB (public events only)
@@ -276,9 +278,9 @@ export default function EditEventPage() {
     setFormError(null);
     setIsSubmitting(true);
 
-    const { title, category, description, date, time, location, maxAttendees, creator_name } = formData;
+    const { title, category, description, date, time, location, maxAttendees, creator_name, time_zone } = formData;
 
-    if (!title || !category || !description || !date || !time || !location || !creator_name) {
+    if (!title || !category || !description || !date || !time || !location || !creator_name || !time_zone) {
       setFormError("Please fill out all required fields.");
       setIsSubmitting(false);
       return;
@@ -353,6 +355,7 @@ export default function EditEventPage() {
         latitude: locationCoords?.latitude,
         longitude: locationCoords?.longitude,
         university_id: universityId,
+        time_zone: formData.time_zone,
       };
 
       // image field precedence
@@ -519,83 +522,106 @@ export default function EditEventPage() {
               />
             </FormBlock>
 
-           {/* Date and Time */}
-<motion.div
-  variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } }}
-  className="grid grid-cols-1 md:grid-cols-2 gap-4"
->
-  <div className="space-y-2">
-    <Label htmlFor="date">Date</Label>
-    <div
-      className="relative"
-      role="button"
-      tabIndex={0}
-      onClick={() => {
-        const el = dateRef.current;
-        if (!el) return;
-        // @ts-ignore - showPicker is supported on modern browsers
-        if (typeof el.showPicker === "function") el.showPicker();
-        else el.focus();
-      }}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          const el = dateRef.current;
-          if (!el) return;
-          // @ts-ignore
-          if (typeof el.showPicker === "function") el.showPicker();
-          else el.focus();
-        }
-      }}
-    >
-      <Input
-        id="date"
-        name="date"
-        type="date"
-        ref={dateRef}
-        value={formData.date}
-        onChange={handleChange}
-        required
-        className="cursor-pointer"
-      />
-    </div>
-  </div>
+            {/* Date and Time */}
+            <motion.div
+              variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } }}
+              className="grid grid-cols-1 gap-4 md:grid-cols-4"
+            >
+              {/* Date (spans 2 cols so Time + TZ sit side-by-side) */}
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="date">Date</Label>
+                <div
+                  className="relative"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => {
+                    const el = dateRef.current;
+                    if (!el) return;
+                    // @ts-ignore - showPicker is supported on modern browsers
+                    if (typeof el.showPicker === "function") el.showPicker();
+                    else el.focus();
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      const el = dateRef.current;
+                      if (!el) return;
+                      // @ts-ignore
+                      if (typeof el.showPicker === "function") el.showPicker();
+                      else el.focus();
+                    }
+                  }}
+                >
+                  <Input
+                    id="date"
+                    name="date"
+                    type="date"
+                    ref={dateRef}
+                    value={formData.date}
+                    onChange={handleChange}
+                    required
+                    className="cursor-pointer"
+                  />
+                </div>
+              </div>
 
-  <div className="space-y-2">
-    <Label htmlFor="time">Time</Label>
-    <div
-      className="relative"
-      role="button"
-      tabIndex={0}
-      onClick={() => {
-        const el = timeRef.current;
-        if (!el) return;
-        // @ts-ignore
-        if (typeof el.showPicker === "function") el.showPicker();
-        else el.focus();
-      }}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          const el = timeRef.current;
-          if (!el) return;
-          // @ts-ignore
-          if (typeof el.showPicker === "function") el.showPicker();
-          else el.focus();
-        }
-      }}
-    >
-      <Input
-        id="time"
-        name="time"
-        type="time"
-        ref={timeRef}
-        value={formData.time}
-        onChange={handleChange}
-        required
-        className="cursor-pointer"
-      />
-    </div>
-  </div>
-</motion.div>
+              {/* Time (col 3) */}
+              <div className="space-y-2">
+                <Label htmlFor="time">Time</Label>
+                <div
+                  className="relative"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => {
+                    const el = timeRef.current;
+                    if (!el) return;
+                    // @ts-ignore
+                    if (typeof el.showPicker === "function") el.showPicker();
+                    else el.focus();
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      const el = timeRef.current;
+                      if (!el) return;
+                      // @ts-ignore
+                      if (typeof el.showPicker === "function") el.showPicker();
+                      else el.focus();
+                    }
+                  }}
+                >
+                  <Input
+                    id="time"
+                    name="time"
+                    type="time"
+                    ref={timeRef}
+                    value={formData.time}
+                    onChange={handleChange}
+                    required
+                    className="cursor-pointer"
+                  />
+                </div>
+              </div>
+
+              {/* Time Zone (col 4) */}
+              <div className="space-y-2">
+                <Label htmlFor="time_zone">Time Zone</Label>
+                <Select
+                  value={formData.time_zone}
+                  onValueChange={(value) => setFormData((p: any) => ({ ...p, time_zone: value }))}
+                >
+                  <SelectTrigger id="time_zone">
+                    <SelectValue placeholder="Select time zone" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="EST">EST</SelectItem>
+                    <SelectItem value="CST">CST</SelectItem>
+                    <SelectItem value="MST">MST</SelectItem>
+                    <SelectItem value="PST">PST</SelectItem>
+                    <SelectItem value="AKST">AKST</SelectItem>
+                    <SelectItem value="HST">HST</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </motion.div>
 
 
             {/* Location */}
@@ -622,84 +648,84 @@ export default function EditEventPage() {
             </FormBlock>
 
             {/* Image uploader */}
-        {/* Image uploader – mobile-first */}
-<div className="space-y-2">
-  <Label>Event Flyer / Poster (optional)</Label>
+            {/* Image uploader – mobile-first */}
+            <div className="space-y-2">
+              <Label>Event Flyer / Poster (optional)</Label>
 
-  <div className="flex flex-col sm:flex-row sm:items-start gap-3">
-    {/* Clickable drop area / preview */}
-    <label
-      htmlFor="flyer"
-      className="group relative w-full sm:w-64 overflow-hidden rounded-lg border-2 border-dashed border-zinc-300 hover:border-zinc-400 bg-white transition-colors"
-    >
-      {/* Keep a steady ratio so it doesn’t jump around on mobile */}
-      <div className="aspect-video w-full">
-        {imagePreview ? (
-          <img
-            src={imagePreview}
-            alt="Flyer preview"
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <div className="h-full w-full grid place-items-center">
-            <div className="text-center">
-              <div className="mx-auto mb-2 h-10 w-10 rounded-md border grid place-items-center">
-                {/* your ImageIcon import */}
-                <ImageIcon className="h-5 w-5 text-zinc-400" />
+              <div className="flex flex-col sm:flex-row sm:items-start gap-3">
+                {/* Clickable drop area / preview */}
+                <label
+                  htmlFor="flyer"
+                  className="group relative w-full sm:w-64 overflow-hidden rounded-lg border-2 border-dashed border-zinc-300 hover:border-zinc-400 bg-white transition-colors"
+                >
+                  {/* Keep a steady ratio so it doesn’t jump around on mobile */}
+                  <div className="aspect-video w-full">
+                    {imagePreview ? (
+                      <img
+                        src={imagePreview}
+                        alt="Flyer preview"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="h-full w-full grid place-items-center">
+                        <div className="text-center">
+                          <div className="mx-auto mb-2 h-10 w-10 rounded-md border grid place-items-center">
+                            {/* your ImageIcon import */}
+                            <ImageIcon className="h-5 w-5 text-zinc-400" />
+                          </div>
+                          <p className="text-sm font-medium text-zinc-800">Select Image</p>
+                          <p className="text-xs text-zinc-500">PNG/JPG, up to ~10MB</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Subtle “Change” overlay on hover (desktop) */}
+                  <div className="pointer-events-none absolute inset-0 hidden sm:flex items-center justify-center bg-black/0 group-hover:bg-black/20 transition-colors">
+                    <span className="rounded-md bg-white/90 px-2 py-1 text-xs font-medium text-zinc-700 shadow">
+                      Change
+                    </span>
+                  </div>
+
+                  <Input
+                    id="flyer"
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    onChange={handleImageChange}
+                  />
+                </label>
+
+                {/* Actions: full-width row on mobile, vertical on desktop */}
+                <div className="flex w-full sm:w-auto gap-2 sm:flex-col">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => document.getElementById("flyer")?.click()}
+                    className="w-full sm:w-32"
+                  >
+                    Change
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => {
+                      setImageFile(null);
+                      setImagePreview(null);
+                      setExistingImageUrl(null); // if you keep server image url
+                    }}
+                    className="w-full sm:w-32"
+                  >
+                    Remove
+                  </Button>
+                </div>
               </div>
-              <p className="text-sm font-medium text-zinc-800">Select Image</p>
-              <p className="text-xs text-zinc-500">PNG/JPG, up to ~10MB</p>
+
+              <p className="text-xs text-zinc-500">
+              </p>
             </div>
-          </div>
-        )}
-      </div>
-
-      {/* Subtle “Change” overlay on hover (desktop) */}
-      <div className="pointer-events-none absolute inset-0 hidden sm:flex items-center justify-center bg-black/0 group-hover:bg-black/20 transition-colors">
-        <span className="rounded-md bg-white/90 px-2 py-1 text-xs font-medium text-zinc-700 shadow">
-          Change
-        </span>
-      </div>
-
-      <Input
-        id="flyer"
-        type="file"
-        accept="image/*"
-        className="sr-only"
-        onChange={handleImageChange}
-      />
-    </label>
-
-    {/* Actions: full-width row on mobile, vertical on desktop */}
-    <div className="flex w-full sm:w-auto gap-2 sm:flex-col">
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={() => document.getElementById("flyer")?.click()}
-        className="w-full sm:w-32"
-      >
-        Change
-      </Button>
-      <Button
-        type="button"
-        variant="destructive"
-        size="sm"
-        onClick={() => {
-          setImageFile(null);
-          setImagePreview(null);
-          setExistingImageUrl(null); // if you keep server image url
-        }}
-        className="w-full sm:w-32"
-      >
-        Remove
-      </Button>
-    </div>
-  </div>
-
-  <p className="text-xs text-zinc-500">
-  </p>
-</div>
 
 
             {/* RSVP Settings (public only) */}
@@ -714,7 +740,7 @@ export default function EditEventPage() {
                       className={
                         allowRsvp === "yes"
                           ? "university-button text-white hover:opacity-100"
-                            : "border-primary text-primary hover:opacity-100"
+                          : "border-primary text-primary hover:opacity-100"
                       }
                       onClick={() => setAllowRsvp("yes")}
                     >
@@ -745,7 +771,7 @@ export default function EditEventPage() {
                         className={
                           limitMode === "limited"
                             ? "university-button text-white hover:opacity-100"
-                              : "border-primary text-primary hover:opacity-100"
+                            : "border-primary text-primary hover:opacity-100"
                         }
                         onClick={() => setLimitMode("limited")}
                       >

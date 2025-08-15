@@ -65,7 +65,7 @@ export default function MyCreatedEventsPage() {
         const { data, error } = await supabase
           .from("events")
           .select(
-            "id,title,category,description,date,time,location,max_attendees,creator_name,verified,is_private,allow_rsvp,rsvp_limited,image_url"
+            "id,title,category,description,date,time,location,max_attendees,creator_name,verified,is_private,allow_rsvp,rsvp_limited,image_url,time_zone"
           )
           .eq("created_by", user.id)
           .order("date", { ascending: true });
@@ -191,9 +191,24 @@ export default function MyCreatedEventsPage() {
   }, [searchQuery, sortOption, createdEvents]);
 
   // Group by upcoming/past
-  const now = new Date();
-  const upcomingEvents = filteredEvents.filter((e) => new Date(e.date) >= now);
-  const pastEvents = filteredEvents.filter((e) => new Date(e.date) < now);
+  // Compare against **today at local midnight** (not "now")
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+
+  // Parse "YYYY-MM-DD" as **local** midnight to avoid UTC shift gotchas
+  const eventLocalMidnight = (ds: string) => {
+    const [y, m, d] = String(ds).split("-").map(Number);
+    return Number.isFinite(y) ? new Date(y, (m ?? 1) - 1, d ?? 1) : new Date(ds);
+  };
+
+  const upcomingEvents = filteredEvents.filter(
+    (e) => eventLocalMidnight(e.date) >= startOfToday
+  );
+
+  const pastEvents = filteredEvents.filter(
+    (e) => eventLocalMidnight(e.date) < startOfToday
+  );
+
 
   const handleEventDeleted = (eventId: number) => {
     setCreatedEvents((prev) => prev.filter((e) => e.id !== eventId));

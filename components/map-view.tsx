@@ -374,9 +374,8 @@ export default function MapView({ schoolKey }: { schoolKey?: string }) {
                         e.stopPropagation();
                         toggleSelect(evt);
                       }}
-                      className={`absolute top-2 right-2 px-2 py-1 text-xs font-semibold rounded ${
-                        isSel ? "bg-red-500 text-white" : "university-button text-white"
-                      }`}
+                      className={`absolute top-2 right-2 px-2 py-1 text-xs font-semibold rounded ${isSel ? "bg-red-500 text-white" : "university-button text-white"
+                        }`}
                     >
                       {isSel ? "Remove" : "Add"}
                     </button>
@@ -425,8 +424,8 @@ export default function MapView({ schoolKey }: { schoolKey?: string }) {
                       {!evt.allow_rsvp
                         ? "No RSVP needed"
                         : evt.rsvp_limited
-                        ? `${count} / ${evt.max_attendees} attendees`
-                        : `${count} attendees`}
+                          ? `${count} / ${evt.max_attendees} attendees`
+                          : `${count} attendees`}
                     </span>
                   </div>
                 </div>
@@ -509,8 +508,8 @@ export default function MapView({ schoolKey }: { schoolKey?: string }) {
                   {!viewEventDetail.allow_rsvp
                     ? "No RSVP needed"
                     : viewEventDetail.rsvp_limited
-                    ? `${attendeeCounts[viewEventDetail.id] || 0} / ${viewEventDetail.max_attendees} attendees`
-                    : `${attendeeCounts[viewEventDetail.id] || 0} attendees`}
+                      ? `${attendeeCounts[viewEventDetail.id] || 0} / ${viewEventDetail.max_attendees} attendees`
+                      : `${attendeeCounts[viewEventDetail.id] || 0} attendees`}
                 </span>
               </div>
             </div>
@@ -531,11 +530,11 @@ export default function MapView({ schoolKey }: { schoolKey?: string }) {
                   {rsvpLoading
                     ? "RSVP…"
                     : (viewEventDetail.rsvp_limited &&
-                        (attendeeCounts[viewEventDetail.id] || 0) >= viewEventDetail.max_attendees)
-                    ? "Full"
-                    : hasRSVPdDetail
-                    ? "Already RSVP’d"
-                    : "RSVP Now"}
+                      (attendeeCounts[viewEventDetail.id] || 0) >= viewEventDetail.max_attendees)
+                      ? "Full"
+                      : hasRSVPdDetail
+                        ? "Already RSVP’d"
+                        : "RSVP Now"}
                 </Button>
               </div>
             )}

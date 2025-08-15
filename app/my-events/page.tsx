@@ -130,9 +130,24 @@ export default function MyEventsPage() {
   }, [searchQuery, sortOption, rsvpedEvents])
 
   // Group events by upcoming and past
-  const now = new Date()
-  const upcomingEvents = filteredEvents.filter((event) => new Date(event.date) >= now)
-  const pastEvents = filteredEvents.filter((event) => new Date(event.date) < now)
+  // Compare against **today at local midnight** (not "now")
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+
+  // Parse "YYYY-MM-DD" as **local** midnight to avoid UTC shift gotchas
+  const eventLocalMidnight = (ds: string) => {
+    const [y, m, d] = String(ds).split("-").map(Number);
+    return Number.isFinite(y) ? new Date(y, (m ?? 1) - 1, d ?? 1) : new Date(ds);
+  };
+
+  const upcomingEvents = filteredEvents.filter(
+    (e) => eventLocalMidnight(e.date) >= startOfToday
+  );
+
+  const pastEvents = filteredEvents.filter(
+    (e) => eventLocalMidnight(e.date) < startOfToday
+  );
+
 
   // --- Remove RSVP Handler ---
   async function handleRemoveRSVP(eventId: number) {
@@ -247,8 +262,6 @@ export default function MyEventsPage() {
                         >
                           <EventCard
                             event={event}
-                            allowRemoveRSVP
-                            onRemoveRSVP={() => handleRemoveRSVP(event.id)}
                             linkLocation   // ← make location link to Google Maps here
                           />
                         </motion.div>

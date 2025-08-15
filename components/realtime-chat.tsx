@@ -1,36 +1,29 @@
-'use client'
+'use client';
 
-import { cn } from '@/lib/utils'
-import { ChatMessageItem } from '@/components/chat-message'
-import { useChatScroll } from '@/hooks/use-chat-scroll'
+import { cn } from '@/lib/utils';
+import { ChatMessageItem } from '@/components/chat-message';
+import { useChatScroll } from '@/hooks/use-chat-scroll';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Send, MessageCircle, Users } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   type ChatMessage,
   useRealtimeChat,
-} from '@/hooks/use-realtime-chat'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Send, MessageCircle, Users } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+} from '@/hooks/use-realtime-chat';
 
 interface RealtimeChatProps {
-  eventId: number
-  userId?: string
-  username?: string
-  className?: string
-  onMessage?: (messages: ChatMessage[]) => void
-  messages?: ChatMessage[]
+  eventId: number;
+  userId?: string;
+  username?: string;
+  className?: string;
+  onMessage?: (messages: ChatMessage[]) => void;
+  messages?: ChatMessage[];
+  /** event creator's user id so we can tag them as "Creator" */
+  creatorId?: string;
 }
 
-/**
- * Realtime chat component for events
- * @param eventId - The event ID to create chat room for
- * @param userId - The ID of the current user
- * @param username - The username of the user
- * @param onMessage - The callback function to handle the messages. Useful if you want to store the messages in a database.
- * @param messages - The messages to display in the chat. Useful if you want to display messages from a database.
- * @returns The chat component
- */
 export function RealtimeChat({
   eventId,
   userId,
@@ -38,10 +31,11 @@ export function RealtimeChat({
   className,
   onMessage,
   messages: initialMessages = [],
+  creatorId,
 }: RealtimeChatProps) {
-  const { containerRef, scrollToBottom } = useChatScroll()
-  const roomName = `event_${eventId}`
-  const displayName = username || 'Anonymous User'
+  const { containerRef, scrollToBottom } = useChatScroll();
+  const roomName = `event_${eventId}`;
+  const displayName = username || 'Anonymous User';
 
   const {
     messages: realtimeMessages,
@@ -56,43 +50,37 @@ export function RealtimeChat({
     userId,
     eventId,
     onMessage,
-  })
-  const [newMessage, setNewMessage] = useState('')
+  });
 
-  // Merge realtime messages with initial messages
+  const [newMessage, setNewMessage] = useState('');
+
+  // Merge and sort (avoid dups by id)
   const allMessages = useMemo(() => {
-    const mergedMessages = [...initialMessages, ...realtimeMessages]
-    // Remove duplicates based on message id
-    const uniqueMessages = mergedMessages.filter(
-      (message, index, self) => index === self.findIndex((m) => m.id === message.id)
-    )
-    // Sort by creation date
-    const sortedMessages = uniqueMessages.sort((a, b) => a.createdAt.localeCompare(b.createdAt))
-
-    return sortedMessages
-  }, [initialMessages, realtimeMessages])
+    const merged = [...initialMessages, ...realtimeMessages];
+    const unique = merged.filter(
+      (m, i, self) => i === self.findIndex((x) => x.id === m.id)
+    );
+    unique.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    return unique;
+  }, [initialMessages, realtimeMessages]);
 
   useEffect(() => {
-    if (onMessage) {
-      onMessage(allMessages)
-    }
-  }, [allMessages, onMessage])
+    onMessage?.(allMessages);
+  }, [allMessages, onMessage]);
 
   useEffect(() => {
-    // Scroll to bottom whenever messages change
-    scrollToBottom()
-  }, [allMessages, scrollToBottom])
+    scrollToBottom();
+  }, [allMessages, scrollToBottom]);
 
   const handleSendMessage = useCallback(
     (e: React.FormEvent) => {
-      e.preventDefault()
-      if (!newMessage.trim() || !isConnected) return
-
-      sendMessage(newMessage)
-      setNewMessage('')
+      e.preventDefault();
+      if (!newMessage.trim() || !isConnected) return;
+      sendMessage(newMessage);
+      setNewMessage('');
     },
     [newMessage, isConnected, sendMessage]
-  )
+  );
 
   if (!userId) {
     return (
@@ -104,59 +92,82 @@ export function RealtimeChat({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-8">
-            <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+          <div className="py-8 text-center">
+            <Users className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
             <p className="text-muted-foreground">Please sign in to join the chat</p>
           </div>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   return (
-    <Card className={cn("flex flex-col h-full w-full bg-background text-foreground antialiased", className)}>
+    <Card className={cn('flex h-full w-full flex-col bg-background text-foreground antialiased', className)}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <MessageCircle className="h-5 w-5" />
           Event Chat
-          <span className="text-sm font-normal text-muted-foreground ml-auto">
+          <span className="ml-auto text-sm font-normal text-muted-foreground">
             {isConnected ? 'Connected' : 'Connecting...'}
           </span>
         </CardTitle>
       </CardHeader>
-      <CardContent className="flex-1 flex flex-col p-0">
+
+      <CardContent className="flex flex-1 flex-col p-0">
         {/* Messages */}
-        <div ref={containerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div ref={containerRef} className="flex-1 space-y-4 overflow-y-auto p-4">
           {allMessages.length === 0 ? (
             <div className="text-center text-sm text-muted-foreground">
               No messages yet. Start the conversation!
             </div>
           ) : null}
           <div className="space-y-1">
-            {allMessages.map((message, index) => {
-              const prevMessage = index > 0 ? allMessages[index - 1] : null
-              const showHeader = !prevMessage || prevMessage.user.name !== message.user.name
+            {allMessages.map((message, i) => {
+              const isOwn = message.user.id === userId;
+
+              // Find the previous NON-DELETED message to base grouping on.
+              let prevNonDeleted: ChatMessage | null = null;
+              for (let j = i - 1; j >= 0; j--) {
+                const cand = allMessages[j];
+                if (!cand.isDeleted) {
+                  prevNonDeleted = cand;
+                  break;
+                }
+              }
+
+              const sameSender =
+                !!prevNonDeleted?.user.id &&
+                prevNonDeleted.user.id === message.user.id;
+
+              const gapMs = prevNonDeleted
+                ? new Date(message.createdAt).getTime() -
+                new Date(prevNonDeleted.createdAt).getTime()
+                : Number.POSITIVE_INFINITY;
+
+              // We never show our own name.
+              // For other people: show at start of their group or when >= 1h gap.
+              const showHeader =
+                !isOwn && (!prevNonDeleted || !sameSender || gapMs >= 60 * 60 * 1000);
 
               return (
-                <div
-                  key={message.id}
-                  className="animate-in fade-in slide-in-from-bottom-4 duration-300"
-                >
+                <div key={message.id} className="animate-in fade-in slide-in-from-bottom-4 duration-300">
                   <ChatMessageItem
                     message={message}
-                    isOwnMessage={message.user.id === userId}
+                    isOwnMessage={isOwn}
                     showHeader={showHeader}
                     currentUserId={userId}
+                    creatorId={creatorId}
                     onReaction={addReaction}
                     onDelete={deleteMessage}
                     onEdit={editMessage}
                   />
                 </div>
-              )
+              );
             })}
           </div>
         </div>
 
+        {/* Composer */}
         <form onSubmit={handleSendMessage} className="flex w-full gap-2 border-t border-border p-4">
           <Input
             className={cn(
@@ -166,20 +177,18 @@ export function RealtimeChat({
             type="text"
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
-            placeholder="Type a message..."
-            disabled={!isConnected}
+            placeholder={isConnected ? 'Type a message…' : 'Connecting…'}
           />
-          {isConnected && newMessage.trim() && (
-            <Button
-              className="aspect-square rounded-full animate-in fade-in slide-in-from-right-4 duration-300"
-              type="submit"
-              disabled={!isConnected}
-            >
-              <Send className="size-4" />
-            </Button>
-          )}
+          <Button
+            className="aspect-square rounded-full"
+            type="submit"
+            disabled={!isConnected || !newMessage.trim()}
+            aria-label="Send"
+          >
+            <Send className="size-4" />
+          </Button>
         </form>
       </CardContent>
     </Card>
-  )
+  );
 }

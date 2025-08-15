@@ -1,6 +1,7 @@
 "use client";
 
 import { Header } from "@/components/header";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -32,19 +33,31 @@ export default function Home() {
             transition={{ duration: 0.7 }}
             className="text-left"
           >
-            <div className="inline-flex items-center gap-3 mb-4">
-              <div>
-                <div className="rounded-full bg-primary p-3 shadow-md flex items-center justify-center">
-                  <BrandSparkIcon className="w-5 h-5 text-primary-foreground" />
-                </div>
+            {/* Eyebrow brand row — primary pill w/ white text */}
+            <div className="mb-6">
+              <div
+                className="inline-flex items-center gap-2 md:gap-3 rounded-full px-3 py-2 md:px-4 md:py-2
+               bg-primary text-white shadow-md"
+              >
+                <Image
+                  src="/herd-logo.jpg"
+                  alt="Herd"
+                  width={28}
+                  height={28}
+                  className="rounded-md"
+                  priority
+                />
+                <span className="text-sm md:text-[15px] font-semibold leading-none">
+                  Campus social, redesigned
+                </span>
               </div>
-              <span className="text-sm font-medium text-muted-foreground">Campus social, redesigned</span>
             </div>
+
+
 
             <h1 className="text-4xl md:text-6xl font-extrabold leading-tight mb-4 text-foreground">
               Meet Herd — discover, join, and host campus events
             </h1>
-
             <p className="text-lg md:text-xl text-muted-foreground max-w-xl mb-6">
               Skip the clutter. Herd centralizes campus happenings and makes RSVPs, meetups, and community discovery effortless.
             </p>
@@ -100,14 +113,14 @@ export default function Home() {
                   <div className="flex-shrink-0 bg-primary w-10 h-10 rounded-lg" />
                   <div>
                     <div className="font-semibold">Study Group: Algorithms</div>
-                    <div className="text-sm text-muted-foreground">Today · 6:00 PM · Library 3</div>
+                    <div className="text-sm text-muted-foreground">Today · 6:00 PM · History Library - Room 3</div>
                   </div>
                 </div>
                 <div className="p-3 rounded-lg bg-neutral-50 border flex items-start gap-3">
                   <div className="flex-shrink-0 bg-accent w-10 h-10 rounded-lg" />
                   <div>
                     <div className="font-semibold">Campus Fair</div>
-                    <div className="text-sm text-muted-foreground">Sat · 12:00 PM · Quad</div>
+                    <div className="text-sm text-muted-foreground">Sat · 12:00 PM · Quad Dorms</div>
                   </div>
                 </div>
                 <div className="p-3 rounded-lg bg-neutral-50 border flex items-start gap-3">

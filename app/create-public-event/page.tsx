@@ -51,6 +51,7 @@ export default function CreatePublicEventPage() {
     time: "",
     location: "",
     maxAttendees: `${DEFAULT_MAX_ATTENDEES}`,
+    time_zone: "",
   });
 
   // RSVP controls
@@ -119,31 +120,31 @@ export default function CreatePublicEventPage() {
     e.preventDefault();
     setFormError(null);
 
-    const { title, category, description, date, time, location, maxAttendees } = formData;
-    if (!title || !category || !description || !date || !time || !location) {
+    const { title, category, description, date, time, location, maxAttendees, time_zone } = formData;
+    if (!title || !category || !description || !date || !time || !location || !time_zone) {
       setFormError("Please fill out all required fields.");
       return;
     }
 
-// RSVP flags for DB
-const allow_rsvp_flag = allowRsvp === "yes";
-const rsvp_limited_flag = limitMode === "limited";
+    // RSVP flags for DB
+    const allow_rsvp_flag = allowRsvp === "yes";
+    const rsvp_limited_flag = limitMode === "limited";
 
-// Compute max_attendees to save (handle NOT NULL by using 0 when RSVPs are off)
-let maxAttToSave: number;
+    // Compute max_attendees to save (handle NOT NULL by using 0 when RSVPs are off)
+    let maxAttToSave: number;
 
-if (allow_rsvp_flag && rsvp_limited_flag) {
-  const maxAtt = parseInt(formData.maxAttendees, 10);
-  if (isNaN(maxAtt) || maxAtt < 1) {
-    setFormError("Please enter a valid maximum number of attendees.");
-    return;
-  }
-  maxAttToSave = maxAtt;
-} else if (allow_rsvp_flag && !rsvp_limited_flag) {
-  maxAttToSave = 50000; // unlimited
-} else {
-  maxAttToSave = 0; // RSVPs not allowed (use 0 to satisfy NOT NULL)
-}
+    if (allow_rsvp_flag && rsvp_limited_flag) {
+      const maxAtt = parseInt(formData.maxAttendees, 10);
+      if (isNaN(maxAtt) || maxAtt < 1) {
+        setFormError("Please enter a valid maximum number of attendees.");
+        return;
+      }
+      maxAttToSave = maxAtt;
+    } else if (allow_rsvp_flag && !rsvp_limited_flag) {
+      maxAttToSave = 50000; // unlimited
+    } else {
+      maxAttToSave = 0; // RSVPs not allowed (use 0 to satisfy NOT NULL)
+    }
 
     setIsSubmitting(true);
 
@@ -199,30 +200,47 @@ if (allow_rsvp_flag && rsvp_limited_flag) {
     }
 
     try {
-      const { error: insErr } = await supabase.from("events").insert({
-        title,
-        category,
-        description,
-        date: format(parsedDate, "MMM d, yyyy"),
-        time,
-        location,
-        max_attendees: maxAttToSave,
-        current_attendees: 0,
-        verified: false,
-        created_by: authData.user.id,
-        creator_name: creatorName,
-        latitude: locationCoords?.latitude,
-        longitude: locationCoords?.longitude,
-        university_id: universityId,
-        is_private: false,
-        image_url: imageUrl,
-        allow_rsvp: allow_rsvp_flag,
-        rsvp_limited: rsvp_limited_flag,
-      });
+      // 1) Insert event and get its id
+      const { data: inserted, error: insErr } = await supabase
+        .from("events")
+        .insert({
+          title,
+          category,
+          description,
+          date: format(parsedDate, "MMM d, yyyy"),
+          time,
+          location,
+          max_attendees: maxAttToSave,
+          current_attendees: 0,
+          verified: false,
+          created_by: authData.user.id,
+          creator_name: creatorName,
+          latitude: locationCoords?.latitude,
+          longitude: locationCoords?.longitude,
+          university_id: universityId,
+          is_private: false,
+          image_url: imageUrl,
+          allow_rsvp: allow_rsvp_flag,
+          rsvp_limited: rsvp_limited_flag,
+          time_zone,
+        })
+        .select("id")
+        .single();
 
       if (insErr) throw insErr;
+      const eventId = inserted?.id;
+      if (!eventId) throw new Error("Event insert returned no id.");
 
-      // no success toast per your preference
+      // 2) Ensure a chat row exists for this new event
+      const { error: chatUpsertErr } = await supabase
+        .from("event_chats")
+        .upsert({ event_id: eventId, name: "Event Chat" }, { onConflict: "event_id" });
+      if (chatUpsertErr) {
+        // Non-fatal: the chat hook also creates it, but this avoids race conditions.
+        console.warn("event_chats upsert failed (will fallback in hook):", chatUpsertErr);
+      }
+
+      // 3) Done
       router.push("/dashboard");
     } catch (err: any) {
       console.error(err);
@@ -318,33 +336,106 @@ if (allow_rsvp_flag && rsvp_limited_flag) {
               />
             </FormRow>
 
-            {/* Date & Time */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormRow label="Date" id="date">
-                <Input
-                  id="date"
-                  name="date"
-                  type="date"
-                  ref={dateRef}
-                  value={formData.date}
-                  onChange={handleChange}
-                  onFocus={(e) => (e.target as HTMLInputElement).showPicker?.()}
-                  required
-                />
-              </FormRow>
-              <FormRow label="Time" id="time">
-                <Input
-                  id="time"
-                  name="time"
-                  type="time"
-                  ref={timeRef}
-                  value={formData.time}
-                  onChange={handleChange}
-                  onFocus={(e) => (e.target as HTMLInputElement).showPicker?.()}
-                  required
-                />
-              </FormRow>
-            </div>
+            {/* Date and Time */}
+            <motion.div
+              variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } }}
+              className="grid grid-cols-1 gap-4 md:grid-cols-4"
+            >
+              {/* Date (spans 2 cols so Time + TZ sit side-by-side) */}
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="date">Date</Label>
+                <div
+                  className="relative"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => {
+                    const el = dateRef.current;
+                    if (!el) return;
+                    // @ts-ignore - showPicker is supported on modern browsers
+                    if (typeof el.showPicker === "function") el.showPicker();
+                    else el.focus();
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      const el = dateRef.current;
+                      if (!el) return;
+                      // @ts-ignore
+                      if (typeof el.showPicker === "function") el.showPicker();
+                      else el.focus();
+                    }
+                  }}
+                >
+                  <Input
+                    id="date"
+                    name="date"
+                    type="date"
+                    ref={dateRef}
+                    value={formData.date}
+                    onChange={handleChange}
+                    required
+                    className="cursor-pointer"
+                  />
+                </div>
+              </div>
+
+              {/* Time (col 3) */}
+              <div className="space-y-2">
+                <Label htmlFor="time">Time</Label>
+                <div
+                  className="relative"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => {
+                    const el = timeRef.current;
+                    if (!el) return;
+                    // @ts-ignore
+                    if (typeof el.showPicker === "function") el.showPicker();
+                    else el.focus();
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      const el = timeRef.current;
+                      if (!el) return;
+                      // @ts-ignore
+                      if (typeof el.showPicker === "function") el.showPicker();
+                      else el.focus();
+                    }
+                  }}
+                >
+                  <Input
+                    id="time"
+                    name="time"
+                    type="time"
+                    ref={timeRef}
+                    value={formData.time}
+                    onChange={handleChange}
+                    required
+                    className="cursor-pointer"
+                  />
+                </div>
+              </div>
+
+              {/* Time Zone (col 4) */}
+              <div className="space-y-2">
+                <Label htmlFor="time_zone">Time Zone</Label>
+                <Select
+                  value={formData.time_zone}
+                  onValueChange={(value) => setFormData((p: any) => ({ ...p, time_zone: value }))}
+                >
+                  <SelectTrigger id="time_zone">
+                    <SelectValue placeholder="Select time zone" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="EST">EST</SelectItem>
+                    <SelectItem value="CST">CST</SelectItem>
+                    <SelectItem value="MST">MST</SelectItem>
+                    <SelectItem value="PST">PST</SelectItem>
+                    <SelectItem value="AKST">AKST</SelectItem>
+                    <SelectItem value="HST">HST</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </motion.div>
 
             {/* Location */}
             <motion.div className="space-y-2">
@@ -378,22 +469,16 @@ if (allow_rsvp_flag && rsvp_limited_flag) {
                   <Button
                     type="button"
                     onClick={() => setAllowRsvp("yes")}
-                    className={`px-4 py-2 rounded-md font-semibold hover:bg-inherit ${
-                      allowRsvp === "yes"
-                        ? "bg-primary text-white"
-                        : "bg-gray-200 text-gray-700"
-                    }`}
+                    className={`px-4 py-2 rounded-md font-semibold hover:bg-inherit ${allowRsvp === "yes" ? "bg-primary text-white" : "bg-gray-200 text-gray-700"
+                      }`}
                   >
                     Yes
                   </Button>
                   <Button
                     type="button"
                     onClick={() => setAllowRsvp("no")}
-                    className={`px-4 py-2 rounded-md font-semibold hover:bg-inherit ${
-                      allowRsvp === "no"
-                        ? "bg-primary text-white"
-                        : "bg-gray-200 text-gray-700"
-                    }`}
+                    className={`px-4 py-2 rounded-md font-semibold hover:bg-inherit ${allowRsvp === "no" ? "bg-primary text-white" : "bg-gray-200 text-gray-700"
+                      }`}
                   >
                     No
                   </Button>
@@ -407,22 +492,16 @@ if (allow_rsvp_flag && rsvp_limited_flag) {
                     <Button
                       type="button"
                       onClick={() => setLimitMode("limited")}
-                      className={`px-4 py-2 rounded-md font-semibold hover:bg-inherit ${
-                        limitMode === "limited"
-                          ? "bg-primary text-white"
-                          : "bg-gray-200 text-gray-700"
-                      }`}
+                      className={`px-4 py-2 rounded-md font-semibold hover:bg-inherit ${limitMode === "limited" ? "bg-primary text-white" : "bg-gray-200 text-gray-700"
+                        }`}
                     >
                       Limited
                     </Button>
                     <Button
                       type="button"
                       onClick={() => setLimitMode("unlimited")}
-                      className={`px-4 py-2 rounded-md font-semibold hover:bg-inherit ${
-                        limitMode === "unlimited"
-                          ? "bg-[var(--primary-color)] text-white"
-                          : "bg-gray-200 text-gray-700"
-                      }`}
+                      className={`px-4 py-2 rounded-md font-semibold hover:bg-inherit ${limitMode === "unlimited" ? "bg-[var(--primary-color)] text-white" : "bg-gray-200 text-gray-700"
+                        }`}
                     >
                       No limit
                     </Button>
@@ -463,7 +542,7 @@ if (allow_rsvp_flag && rsvp_limited_flag) {
                   "rounded-lg border-2 border-dashed transition-colors cursor-pointer",
                   "p-4 sm:p-5 md:p-6",
                   "flex items-center gap-4 sm:gap-5",
-                  isDragOver ? "border-primary bg-primary/5" : "border-zinc-300 bg-zinc-50"
+                  isDragOver ? "border-primary bg-primary/5" : "border-zinc-300 bg-zinc-50",
                 ].join(" ")}
               >
                 <div className="shrink-0">

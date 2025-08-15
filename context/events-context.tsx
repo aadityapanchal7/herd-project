@@ -158,7 +158,7 @@ export function EventsProvider({ children }: { children: ReactNode }) {
           id, title, category, description, date, time, location,
           max_attendees, current_attendees, verified, created_by, creator_name,
           latitude, longitude, university_id, is_private, image_url,
-          allow_rsvp, rsvp_limited, created_at
+          allow_rsvp, rsvp_limited, created_at, time_zone
         `)
         .order("date", { ascending: true });
 

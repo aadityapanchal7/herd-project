@@ -58,6 +58,7 @@ export default function CreatePrivateEventPage() {
     date: "",
     time: "",
     location: "",
+    time_zone: "",
   });
 
   // image upload (same as public)
@@ -176,9 +177,9 @@ export default function CreatePrivateEventPage() {
     e.preventDefault();
     setFormError(null);
 
-    const { title, category, description, date, time, location } = formData;
+    const { title, category, description, date, time, location, time_zone } = formData;
 
-    if (!title || !category || !description || !date || !time || !location) {
+    if (!title || !category || !description || !date || !time || !location || !time_zone) {
       setFormError("Please fill out all required fields.");
       return;
     }
@@ -261,6 +262,7 @@ export default function CreatePrivateEventPage() {
           university_id: universityId,
           is_private: true,
           image_url: imageUrl,
+          time_zone
         })
         .select("id")
         .single();
@@ -268,6 +270,14 @@ export default function CreatePrivateEventPage() {
       if (insErr) throw insErr;
       const eventId = inserted?.id;
       if (!eventId) throw new Error("Event insert failed.");
+
+      const { error: chatUpsertErr } = await supabase
+        .from("event_chats")
+        .upsert({ event_id: eventId, name: "Event Chat" }, { onConflict: "event_id" });
+      if (chatUpsertErr) {
+        // Non-fatal: your hook also tries to create it, but this avoids race conditions
+        console.warn("event_chats upsert failed (will fallback in hook):", chatUpsertErr);
+      }
 
       // 2) Insert into private_events with array of invitee IDs
       const inviteeIds = Array.from(selectedIds); // string[]
@@ -394,38 +404,108 @@ export default function CreatePrivateEventPage() {
               />
             </motion.div>
 
-            {/* Date & Time (click-anywhere opens via onFocus) */}
+            {/* Date and Time */}
             <motion.div
               variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } }}
-              className="grid grid-cols-1 md:grid-cols-2 gap-6"
+              className="grid grid-cols-1 gap-4 md:grid-cols-4"
             >
-              <div className="space-y-2">
+              {/* Date (spans 2 cols so Time + TZ sit side-by-side) */}
+              <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="date">Date</Label>
-                <Input
-                  id="date"
-                  name="date"
-                  type="date"
-                  ref={dateRef}
-                  value={formData.date}
-                  onChange={handleChange}
-                  onFocus={(e) => (e.target as HTMLInputElement).showPicker?.()}
-                  required
-                />
+                <div
+                  className="relative"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => {
+                    const el = dateRef.current;
+                    if (!el) return;
+                    // @ts-ignore - showPicker is supported on modern browsers
+                    if (typeof el.showPicker === "function") el.showPicker();
+                    else el.focus();
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      const el = dateRef.current;
+                      if (!el) return;
+                      // @ts-ignore
+                      if (typeof el.showPicker === "function") el.showPicker();
+                      else el.focus();
+                    }
+                  }}
+                >
+                  <Input
+                    id="date"
+                    name="date"
+                    type="date"
+                    ref={dateRef}
+                    value={formData.date}
+                    onChange={handleChange}
+                    required
+                    className="cursor-pointer"
+                  />
+                </div>
               </div>
+
+              {/* Time (col 3) */}
               <div className="space-y-2">
                 <Label htmlFor="time">Time</Label>
-                <Input
-                  id="time"
-                  name="time"
-                  type="time"
-                  ref={timeRef}
-                  value={formData.time}
-                  onChange={handleChange}
-                  onFocus={(e) => (e.target as HTMLInputElement).showPicker?.()}
-                  required
-                />
+                <div
+                  className="relative"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => {
+                    const el = timeRef.current;
+                    if (!el) return;
+                    // @ts-ignore
+                    if (typeof el.showPicker === "function") el.showPicker();
+                    else el.focus();
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      const el = timeRef.current;
+                      if (!el) return;
+                      // @ts-ignore
+                      if (typeof el.showPicker === "function") el.showPicker();
+                      else el.focus();
+                    }
+                  }}
+                >
+                  <Input
+                    id="time"
+                    name="time"
+                    type="time"
+                    ref={timeRef}
+                    value={formData.time}
+                    onChange={handleChange}
+                    required
+                    className="cursor-pointer"
+                  />
+                </div>
+              </div>
+
+              {/* Time Zone (col 4) */}
+              <div className="space-y-2">
+                <Label htmlFor="time_zone">Time Zone</Label>
+                <Select
+                  value={formData.time_zone}
+                  onValueChange={(value) => setFormData((p: any) => ({ ...p, time_zone: value }))}
+                >
+                  <SelectTrigger id="time_zone">
+                    <SelectValue placeholder="Select time zone" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="EST">EST</SelectItem>
+                    <SelectItem value="CST">CST</SelectItem>
+                    <SelectItem value="MST">MST</SelectItem>
+                    <SelectItem value="PST">PST</SelectItem>
+                    <SelectItem value="AKST">AKST</SelectItem>
+                    <SelectItem value="HST">HST</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </motion.div>
+
+
 
             {/* Location */}
             <motion.div
@@ -511,18 +591,18 @@ export default function CreatePrivateEventPage() {
                 ].join(" ")}
               >
                 <div className="shrink-0">
-  {imagePreview ? (
-    <img
-      src={imagePreview}
-      alt="Flyer preview"
-      className="h-16 w-16 sm:h-20 sm:w-20 rounded-md object-cover border"
-    />
-  ) : (
-    <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-md bg-white border flex items-center justify-center">
-      <ImageIcon className="w-6 h-6 text-gray-400" />
-    </div>
-  )}
-</div>
+                  {imagePreview ? (
+                    <img
+                      src={imagePreview}
+                      alt="Flyer preview"
+                      className="h-16 w-16 sm:h-20 sm:w-20 rounded-md object-cover border"
+                    />
+                  ) : (
+                    <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-md bg-white border flex items-center justify-center">
+                      <ImageIcon className="w-6 h-6 text-gray-400" />
+                    </div>
+                  )}
+                </div>
 
                 <div className="flex-1">
                   <p className="text-sm sm:text-base font-medium text-zinc-800">

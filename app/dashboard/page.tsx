@@ -43,10 +43,20 @@ export default function DashboardPage() {
     return isValid(asDate) ? asDate : new Date(8640000000000000);
   };
 
+  // Replace your current upcomingEvents useMemo with this:
   const upcomingEvents = useMemo(
-    () => (events ?? []).filter((e) => parseEventDate(e.date) >= today),
+    () =>
+      (events ?? []).filter((e) => {
+        const d = parseEventDate(e.date); // expect local date at 00:00
+        if (!(d instanceof Date) || Number.isNaN(d.getTime())) return false;
+
+        // Keep the event visible until the *start of the next day*
+        const nextDayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
+        return nextDayStart > today; // 'today' is your current Date (now)
+      }),
     [events, today]
   );
+
 
   const isVisibleToMe = (e: Event & { attendee_count?: number }) => {
     const mine = user?.id && e.created_by === user.id;
@@ -128,25 +138,7 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* My Scheduled */}
-          <div className="container max-w-6xl mx-auto px-4 mb-10">
-            <div className="bg-white rounded-xl shadow-sm p-4 mb-4">
-              <h2 className="text-xl font-semibold university-primary-text">
-                My Scheduled Events
-              </h2>
-            </div>
-            {scheduledEvents.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {scheduledEvents.map((evt) => (
-                  <EventCard key={evt.id} event={evt} />
-                ))}
-              </div>
-            ) : (
-              <p className="text-center text-gray-600">
-                You have no upcoming scheduled events.
-              </p>
-            )}
-          </div>
+
         </>
       )}
     </main>

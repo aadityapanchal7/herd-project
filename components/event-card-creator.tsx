@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Calendar as CalendarIcon, MapPin, Users, Edit, Trash2 } from "lucide-react";
+import { Calendar as CalendarIcon, MapPin, Users, Edit, Trash2, MessageCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/auth-context";
@@ -9,6 +9,8 @@ import { useToast } from "@/components/ui/use-toast";
 import type { Event } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
+import { to12h } from "@/lib/to12hrs";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -54,6 +56,7 @@ export function EventCardCreator({ event, onEventDeleted }: EventCardCreatorProp
     allow_rsvp,
     rsvp_limited,
     image_url,
+    time_zone,
   } = event as Event & {
     allow_rsvp?: boolean | null;
     rsvp_limited?: boolean | null;
@@ -131,10 +134,10 @@ export function EventCardCreator({ event, onEventDeleted }: EventCardCreatorProp
   const rsvpLabel = is_private
     ? `${attendeeCount} attendees`
     : !rsvpEnabled
-    ? "RSVP disabled"
-    : rsvpIsLimited
-    ? `${attendeeCount} / ${max_attendees ?? 0} attendees`
-    : `${attendeeCount} attendees`;
+      ? "RSVP disabled"
+      : rsvpIsLimited
+        ? `${attendeeCount} / ${max_attendees ?? 0} attendees`
+        : `${attendeeCount} attendees`;
 
   const handleEdit = () => router.push(`/edit-event/${id}`);
 
@@ -152,6 +155,12 @@ export function EventCardCreator({ event, onEventDeleted }: EventCardCreatorProp
     }
   };
 
+  // NEW: open chat handler
+  const openChat = () => {
+    // route to the event page and (optionally) let that page auto-focus the chat area
+    router.push(`/events/${id}?openChat=1#chat`);
+  };
+
   return (
     <div className="overflow-hidden rounded-2xl border bg-white shadow-sm transition-shadow hover:shadow-md">
       {/* Hero image like normal event card */}
@@ -162,16 +171,15 @@ export function EventCardCreator({ event, onEventDeleted }: EventCardCreatorProp
           <div className="h-full w-full bg-gradient-to-br from-zinc-100 to-zinc-200" />
         )}
 
-{/* Chips row (category + visibility) */}
-<div className="absolute left-3 top-3 flex items-center gap-2">
-  <span className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold ${categoryClasses}`}>
-    {category}
-  </span>
-  <span className="inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold bg-gray-100 text-gray-700">
-    {is_private ? "Private" : "Public"}
-  </span>
-</div>
-
+        {/* Chips row (category + visibility) */}
+        <div className="absolute left-3 top-3 flex items-center gap-2">
+          <span className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold ${categoryClasses}`}>
+            {category}
+          </span>
+          <span className="inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold bg-gray-100 text-gray-700">
+            {is_private ? "Private" : "Public"}
+          </span>
+        </div>
       </div>
 
       {/* Body */}
@@ -191,8 +199,9 @@ export function EventCardCreator({ event, onEventDeleted }: EventCardCreatorProp
         <div className="mb-4 space-y-2">
           <div className="flex items-center text-gray-500">
             <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
-            <span>
-              {date} • {time}
+            <span className="text-[15px]">
+              {to12h(time)}
+              {time_zone ? ` ${time_zone}` : ""}
             </span>
           </div>
 
@@ -228,8 +237,20 @@ export function EventCardCreator({ event, onEventDeleted }: EventCardCreatorProp
           </div>
         </div>
 
-        {/* Where RSVP CTA would be – use Edit/Delete */}
+        {/* Actions row */}
         <div className="mt-4 flex justify-end gap-2">
+          {/* NEW: Open Chat (to the LEFT of Edit) */}
+          <Button
+            variant="outline"
+            onClick={openChat}
+            className="flex items-center gap-2"
+            aria-label="Open event chat"
+            title="Open chat"
+          >
+            <MessageCircle className="h-4 w-4" />
+            Chat
+          </Button>
+
           <Button variant="outline" onClick={handleEdit} className="flex items-center gap-2">
             <Edit className="h-4 w-4" />
             Edit

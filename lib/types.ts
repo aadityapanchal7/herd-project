@@ -8,7 +8,7 @@ export interface Event {
   date: string
   time: string
   location: string
-  max_attendees: number 
+  max_attendees: number
   current_attendees: number
   verified: boolean
   created_by: string
@@ -19,8 +19,9 @@ export interface Event {
   creator_name?: string;
   is_private: boolean;
   image_url?: string | null;
-  allow_rsvp?: boolean | null;     
+  allow_rsvp?: boolean | null;
   rsvp_limited?: boolean | null;
+  time_zone?: string | null;
 
 }
 

@@ -7,26 +7,24 @@ import { Map as MapIcon, List as ListIcon, Star as RecommenderIcon } from 'lucid
 export function ViewSelector() {
   const path = usePathname()  // e.g. "/dashboard", "/map", or "/recommend"
 
-  const activeClasses   = 'bg-white shadow text-primary'
+  const activeClasses = 'bg-white shadow text-primary'
   const inactiveClasses = 'text-zinc-500 hover:text-primary'
 
   return (
     <div className="flex items-center justify-center space-x-2 my-4">
       <Link
         href="/dashboard"
-        className={`flex items-center gap-1 px-4 py-2 rounded-full transition ${
-          path === '/dashboard' ? activeClasses : inactiveClasses
-        }`}
+        className={`flex items-center gap-1 px-4 py-2 rounded-full transition ${path === '/dashboard' ? activeClasses : inactiveClasses
+          }`}
       >
         <ListIcon size={16} className="inline" />
-        <span>My Events</span>
+        <span>Discover Events</span>
       </Link>
 
       <Link
         href="/map"
-        className={`flex items-center gap-1 px-4 py-2 rounded-full transition ${
-          path === '/map' ? activeClasses : inactiveClasses
-        }`}
+        className={`flex items-center gap-1 px-4 py-2 rounded-full transition ${path === '/map' ? activeClasses : inactiveClasses
+          }`}
       >
         <MapIcon size={16} className="inline" />
         <span>Event Map</span>

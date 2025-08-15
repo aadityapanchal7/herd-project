@@ -42,13 +42,18 @@ export function Header() {
           style={{ cursor: "pointer" }}
           className="flex items-center gap-3"
         >
-          <Image src="/herd-logo.jpg" alt="Herd" width={40} height={40} className="rounded-md" />
-          <div className="flex flex-col leading-tight">
-            <span className="text-base font-semibold university-primary-text">Herd</span>
-            {isAuthenticated && (
-              <span className="text-xs text-muted-foreground">{user?.university}</span>
-            )}
-          </div>
+      <div className="flex items-center justify-center gap-3">
+  <Image
+    src="/herd-logo.jpg"
+    alt="Herd"
+    width={40}
+    height={40}
+    className="rounded-md"
+  />
+  <span className="text-xl font-semibold university-primary-text">Herd</span>
+
+</div>
+
         </button>
 
         <div className="flex items-center gap-4">
