@@ -7,8 +7,8 @@ import { Map as MapIcon, List as ListIcon, Star as RecommenderIcon } from 'lucid
 export function ViewSelector() {
   const path = usePathname()  // e.g. "/dashboard", "/map", or "/recommend"
 
-  const activeClasses   = 'bg-white shadow text-[var(--primary-color)]'
-  const inactiveClasses = 'text-zinc-500 hover:text-[var(--primary-color)]'
+  const activeClasses   = 'bg-white shadow text-primary'
+  const inactiveClasses = 'text-zinc-500 hover:text-primary'
 
   return (
     <div className="flex items-center justify-center space-x-2 my-4">

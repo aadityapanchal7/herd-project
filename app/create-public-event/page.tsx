@@ -380,7 +380,7 @@ if (allow_rsvp_flag && rsvp_limited_flag) {
                     onClick={() => setAllowRsvp("yes")}
                     className={`px-4 py-2 rounded-md font-semibold hover:bg-inherit ${
                       allowRsvp === "yes"
-                        ? "bg-[var(--primary-color)] text-white"
+                        ? "bg-primary text-white"
                         : "bg-gray-200 text-gray-700"
                     }`}
                   >
@@ -391,7 +391,7 @@ if (allow_rsvp_flag && rsvp_limited_flag) {
                     onClick={() => setAllowRsvp("no")}
                     className={`px-4 py-2 rounded-md font-semibold hover:bg-inherit ${
                       allowRsvp === "no"
-                        ? "bg-[var(--primary-color)] text-white"
+                        ? "bg-primary text-white"
                         : "bg-gray-200 text-gray-700"
                     }`}
                   >
@@ -409,7 +409,7 @@ if (allow_rsvp_flag && rsvp_limited_flag) {
                       onClick={() => setLimitMode("limited")}
                       className={`px-4 py-2 rounded-md font-semibold hover:bg-inherit ${
                         limitMode === "limited"
-                          ? "bg-[var(--primary-color)] text-white"
+                          ? "bg-primary text-white"
                           : "bg-gray-200 text-gray-700"
                       }`}
                     >
@@ -463,7 +463,7 @@ if (allow_rsvp_flag && rsvp_limited_flag) {
                   "rounded-lg border-2 border-dashed transition-colors cursor-pointer",
                   "p-4 sm:p-5 md:p-6",
                   "flex items-center gap-4 sm:gap-5",
-                  isDragOver ? "border-[var(--primary-color)] bg-[var(--primary-color)]/5" : "border-zinc-300 bg-zinc-50"
+                  isDragOver ? "border-primary bg-primary/5" : "border-zinc-300 bg-zinc-50"
                 ].join(" ")}
               >
                 <div className="shrink-0">

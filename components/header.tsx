@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { Mail, LogOut, User, PlusCircle, CalendarCheck, Users, Calendar, Heart } from "lucide-react"
+import { IconWrapper } from "@/components/icons/IconWrapper"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/context/auth-context"
 import { useRouter } from "next/navigation"
@@ -57,8 +58,10 @@ export function Header() {
               className="university-button university-button:hover"
               onClick={() => router.push("/create-public-event")}
             >
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Create Event
+              <IconWrapper>
+                <PlusCircle />
+              </IconWrapper>
+              <span className="ml-2">Create Event</span>
             </Button>
           )}
 

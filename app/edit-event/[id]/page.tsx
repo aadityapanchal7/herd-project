@@ -714,7 +714,7 @@ export default function EditEventPage() {
                       className={
                         allowRsvp === "yes"
                           ? "university-button text-white hover:opacity-100"
-                          : "border-[var(--primary-color)] text-[var(--primary-color)] hover:opacity-100"
+                            : "border-primary text-primary hover:opacity-100"
                       }
                       onClick={() => setAllowRsvp("yes")}
                     >
@@ -726,7 +726,7 @@ export default function EditEventPage() {
                       className={
                         allowRsvp === "no"
                           ? "university-button text-white hover:opacity-100"
-                          : "border-[var(--primary-color)] text-[var(--primary-color)] hover:opacity-100"
+                          : "border-primary text-primary hover:opacity-100"
                       }
                       onClick={() => setAllowRsvp("no")}
                     >
@@ -745,7 +745,7 @@ export default function EditEventPage() {
                         className={
                           limitMode === "limited"
                             ? "university-button text-white hover:opacity-100"
-                            : "border-[var(--primary-color)] text-[var(--primary-color)] hover:opacity-100"
+                              : "border-primary text-primary hover:opacity-100"
                         }
                         onClick={() => setLimitMode("limited")}
                       >
@@ -895,7 +895,7 @@ export default function EditEventPage() {
                             <span className="font-medium">{full}</span>
                           </div>
                         </div>
-                        <input type="checkbox" readOnly checked={checked} className="w-4 h-4 accent-[var(--primary-color)]" />
+                        <input type="checkbox" readOnly checked={checked} className="w-4 h-4 accent-primary" />
                       </li>
                     );
                   })}

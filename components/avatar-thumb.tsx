@@ -24,7 +24,7 @@ export function AvatarThumb({
   if (!url || broken) {
     return (
       <div
-        className={`rounded-full flex items-center justify-center font-semibold text-white border ${className}`}
+        className={`rounded-full flex items-center justify-center font-semibold text-white border bg-primary ${className}`}
         style={{
           width: size,
           height: size,

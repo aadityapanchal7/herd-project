@@ -130,7 +130,7 @@ export function useRealtimeChat({ roomName, username, userId, eventId, onMessage
               existingReaction.count++
               existingReaction.users.push({
                 user_id: reaction.user_id,
-                name: reaction.profiles ? `${reaction.profiles.first_name} ${reaction.profiles.last_name}` : 'Unknown User'
+                name: reaction.profiles && reaction.profiles[0] ? `${reaction.profiles[0].first_name} ${reaction.profiles[0].last_name}` : 'Unknown User'
               })
             } else {
               reactionsByMessage[messageId].push({
@@ -138,7 +138,7 @@ export function useRealtimeChat({ roomName, username, userId, eventId, onMessage
                 count: 1,
                 users: [{
                   user_id: reaction.user_id,
-                  name: reaction.profiles ? `${reaction.profiles.first_name} ${reaction.profiles.last_name}` : 'Unknown User'
+                  name: reaction.profiles && reaction.profiles[0] ? `${reaction.profiles[0].first_name} ${reaction.profiles[0].last_name}` : 'Unknown User'
                 }]
               })
             }
@@ -150,7 +150,7 @@ export function useRealtimeChat({ roomName, username, userId, eventId, onMessage
           id: msg.id.toString(),
           content: msg.message,
           user: {
-            name: msg.profiles ? `${msg.profiles.first_name} ${msg.profiles.last_name}` : 'Unknown User',
+            name: msg.profiles && msg.profiles[0] ? `${msg.profiles[0].first_name} ${msg.profiles[0].last_name}` : 'Unknown User',
             id: msg.user_id
           },
           createdAt: msg.created_at,
@@ -214,61 +214,79 @@ export function useRealtimeChat({ roomName, username, userId, eventId, onMessage
       .on('postgres_changes', 
         { event: 'INSERT', schema: 'public', table: 'message_reactions' }, 
         (payload) => {
-          const newReaction = payload.new as any
-          const messageId = newReaction.message_id.toString()
-          
-          setMessages(prev => prev.map(msg => {
-            if (msg.id !== messageId) return msg
-            
-            const reactions = msg.reactions || []
-            const existingReaction = reactions.find(r => r.emoji === newReaction.emoji)
-            
-            if (existingReaction) {
-              const userExists = existingReaction.users.some(u => u.user_id === newReaction.user_id)
-              if (!userExists) {
-                return {
-                  ...msg,
-                  reactions: reactions.map(r => 
-                    r.emoji === newReaction.emoji 
-                      ? { ...r, count: r.count + 1, users: [...r.users, { user_id: newReaction.user_id, name: username }] }
-                      : r
-                  )
+            try {
+              const newReaction = payload?.new as any
+              if (!newReaction || typeof newReaction.message_id === 'undefined') {
+                console.warn('Received malformed newReaction payload, ignoring:', payload)
+                return
+              }
+
+              const messageId = String(newReaction.message_id)
+
+              setMessages(prev => prev.map(msg => {
+                if (msg.id !== messageId) return msg
+
+                const reactions = msg.reactions || []
+                const existingReaction = reactions.find(r => r.emoji === newReaction.emoji)
+
+                if (existingReaction) {
+                  const userExists = existingReaction.users.some(u => u.user_id === newReaction.user_id)
+                  if (!userExists) {
+                    return {
+                      ...msg,
+                      reactions: reactions.map(r => 
+                        r.emoji === newReaction.emoji 
+                          ? { ...r, count: r.count + 1, users: [...r.users, { user_id: newReaction.user_id, name: username }] }
+                          : r
+                      )
+                    }
+                  }
+                } else {
+                  return {
+                    ...msg,
+                    reactions: [...reactions, {
+                      emoji: newReaction.emoji,
+                      count: 1,
+                      users: [{ user_id: newReaction.user_id, name: username }]
+                    }]
+                  }
                 }
-              }
-            } else {
-              return {
-                ...msg,
-                reactions: [...reactions, {
-                  emoji: newReaction.emoji,
-                  count: 1,
-                  users: [{ user_id: newReaction.user_id, name: username }]
-                }]
-              }
+                return msg
+              }))
+            } catch (err) {
+              console.error('Error processing new reaction payload:', err, payload)
             }
-            return msg
-          }))
-        }
+          }
       )
       .on('postgres_changes', 
         { event: 'DELETE', schema: 'public', table: 'message_reactions' }, 
         (payload) => {
-          const deletedReaction = payload.old as any
-          const messageId = deletedReaction.message_id.toString()
-          
-          setMessages(prev => prev.map(msg => {
-            if (msg.id !== messageId) return msg
-            
-            const reactions = msg.reactions || []
-            const updatedReactions = reactions.map(r => {
-              if (r.emoji === deletedReaction.emoji) {
-                const newUsers = r.users.filter(u => u.user_id !== deletedReaction.user_id)
-                return newUsers.length > 0 ? { ...r, count: newUsers.length, users: newUsers } : null
-              }
-              return r
-            }).filter(Boolean) as MessageReaction[]
-            
-            return { ...msg, reactions: updatedReactions }
-          }))
+          try {
+            const deletedReaction = payload?.old as any
+            if (!deletedReaction || typeof deletedReaction.message_id === 'undefined') {
+              console.warn('Received malformed deletedReaction payload, ignoring:', payload)
+              return
+            }
+
+            const messageId = String(deletedReaction.message_id)
+
+            setMessages(prev => prev.map(msg => {
+              if (msg.id !== messageId) return msg
+
+              const reactions = msg.reactions || []
+              const updatedReactions = reactions.map(r => {
+                if (r.emoji === deletedReaction.emoji) {
+                  const newUsers = r.users.filter(u => u.user_id !== deletedReaction.user_id)
+                  return newUsers.length > 0 ? { ...r, count: newUsers.length, users: newUsers } : null
+                }
+                return r
+              }).filter(Boolean) as MessageReaction[]
+
+              return { ...msg, reactions: updatedReactions }
+            }))
+          } catch (err) {
+            console.error('Error processing deleted reaction payload:', err, payload)
+          }
         }
       )
       .subscribe((status) => {
@@ -371,11 +389,12 @@ export function useRealtimeChat({ roomName, username, userId, eventId, onMessage
           throw error
         }
       }
-    } catch (err) {
+      } catch (err) {
       console.error('Error adding reaction:', err)
       if (err && typeof err === 'object') {
-        console.error('Error message:', err.message || 'Unknown error')
-        console.error('Error code:', err.code || 'No code')
+        const e = err as any
+        console.error('Error message:', e.message || 'Unknown error')
+        console.error('Error code:', e.code || 'No code')
       }
     }
   }, [userId, eventChatId])
@@ -414,8 +433,9 @@ export function useRealtimeChat({ roomName, username, userId, eventId, onMessage
     } catch (err) {
       console.error('Error deleting message:', err)
       if (err && typeof err === 'object') {
-        console.error('Error message:', err.message || 'Unknown error')
-        console.error('Error code:', err.code || 'No code')
+        const e = err as any
+        console.error('Error message:', e.message || 'Unknown error')
+        console.error('Error code:', e.code || 'No code')
       }
     }
   }, [userId, eventChatId])
@@ -453,8 +473,9 @@ export function useRealtimeChat({ roomName, username, userId, eventId, onMessage
     } catch (err) {
       console.error('Error editing message:', err)
       if (err && typeof err === 'object') {
-        console.error('Error message:', err.message || 'Unknown error')
-        console.error('Error code:', err.code || 'No code')
+        const e = err as any
+        console.error('Error message:', e.message || 'Unknown error')
+        console.error('Error code:', e.code || 'No code')
       }
     }
   }, [userId, eventChatId])

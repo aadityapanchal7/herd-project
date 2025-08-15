@@ -190,14 +190,14 @@ export function EventCardCreator({ event, onEventDeleted }: EventCardCreatorProp
         {/* Meta rows */}
         <div className="mb-4 space-y-2">
           <div className="flex items-center text-gray-500">
-            <CalendarIcon className="mr-2 h-4 w-4" style={{ color: "var(--primary-color)" }} />
+            <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
             <span>
               {date} • {time}
             </span>
           </div>
 
           <div className="flex items-center text-gray-500">
-            <MapPin className="mr-2 h-4 w-4" style={{ color: "var(--primary-color)" }} />
+            <MapPin className="mr-2 h-4 w-4 text-primary" />
             <span>{location}</span>
           </div>
 
@@ -206,7 +206,7 @@ export function EventCardCreator({ event, onEventDeleted }: EventCardCreatorProp
             {canOpenAttendees ? (
               <button
                 type="button"
-                className="group mr-2 flex h-8 w-8 items-center justify-center rounded-md border border-[var(--primary-color)] bg-white transition-colors hover:bg-[var(--primary-color)] focus:outline-none"
+                className="group mr-2 flex h-8 w-8 items-center justify-center rounded-md border border-primary bg-white transition-colors hover:bg-primary focus:outline-none"
                 onClick={async () => {
                   setShowAttendeeList(true);
                   setLoadingAttendees(true);
@@ -219,10 +219,10 @@ export function EventCardCreator({ event, onEventDeleted }: EventCardCreatorProp
                 }}
                 title="View attendees"
               >
-                <Users className="h-5 w-5 text-[var(--primary-color)] transition-colors group-hover:text-white" />
+                <Users className="h-5 w-5 text-primary transition-colors group-hover:text-white" />
               </button>
             ) : (
-              <Users className="mr-2 h-4 w-4 text-[var(--primary-color)]" />
+              <Users className="mr-2 h-4 w-4 text-primary" />
             )}
             <span className="text-base">{rsvpLabel}</span>
           </div>

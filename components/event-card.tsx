@@ -254,7 +254,7 @@ export function EventCard({
         <ul className="space-y-2 text-slate-600">
           {/* Date */}
           <li className="flex items-center">
-            <CalendarIcon className="mr-2 h-4 w-4 text-[var(--primary-color)]" />
+            <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
             <span className="text-[15px]">
               {date} • {time}
             </span>
@@ -269,7 +269,7 @@ export function EventCard({
                   target="_blank"
                   rel="noopener noreferrer"
                   title="Open in Google Maps"
-                  className="group/map mr-2 inline-flex h-8 w-8 items-center justify-center rounded-md border border-[var(--primary-color)] bg-white text-[var(--primary-color)] hover:bg-[var(--primary-color)] hover:text-white transition-colors"
+                  className="group/map mr-2 inline-flex h-8 w-8 items-center justify-center rounded-md border border-primary bg-white text-primary hover:bg-primary hover:text-white transition-colors"
                 >
                   <MapPin className="h-5 w-5 transition-colors group-hover/map:text-white" />
                 </a>
@@ -277,7 +277,7 @@ export function EventCard({
               </>
             ) : (
               <>
-                <MapPin className="mr-2 h-4 w-4 text-[var(--primary-color)]" />
+                <MapPin className="mr-2 h-4 w-4 text-primary" />
                 <span className="text-[15px]">{location}</span>
               </>
             )}
@@ -289,11 +289,11 @@ export function EventCard({
             <li className="flex items-center">
               <button
                 type="button"
-                className="group/att mr-2 flex h-9 w-9 items-center justify-center rounded-md border border-[var(--primary-color)] bg-white transition-colors hover:bg-[var(--primary-color)] focus:outline-none"
+                className="group/att mr-2 flex h-9 w-9 items-center justify-center rounded-md border border-primary bg-white transition-colors hover:bg-primary focus:outline-none"
                 onClick={() => setShowAttendeeList(true)}
                 title="View attendees"
               >
-                <Users className="h-5 w-5 text-[var(--primary-color)] transition-colors group-hover/att:text-white" />
+                <Users className="h-5 w-5 text-primary transition-colors group-hover/att:text-white" />
               </button>
               <span className="text-[15px]">
                 {rsvp_limited
@@ -304,7 +304,7 @@ export function EventCard({
           ) : (
             // RSVPs disabled → non-clickable Users icon + text
             <li className="flex items-center">
-  <Users className="mr-2 h-4 w-4 text-[var(--primary-color)]" />
+  <Users className="mr-2 h-4 w-4 text-primary" />
   <span className="text-[15px] text-slate-600">No RSVP needed</span>
 </li>
           )}

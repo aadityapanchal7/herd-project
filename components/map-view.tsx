@@ -420,7 +420,7 @@ export default function MapView({ schoolKey }: { schoolKey?: string }) {
 
                   {/* Attendees row: 3 states (off / unlimited / limited) */}
                   <div className="flex items-center text-gray-500 mt-1">
-                    <Users className="w-4 h-4 mr-2 text-[var(--primary-color)]" />
+                    <Users className="w-4 h-4 mr-2 text-primary" />
                     <span className="text-base">
                       {!evt.allow_rsvp
                         ? "No RSVP needed"
@@ -486,7 +486,7 @@ export default function MapView({ schoolKey }: { schoolKey?: string }) {
                   <button
                     type="button"
                     title="View attendees"
-                    className="group flex items-center justify-center w-8 h-8 rounded-md border border-[var(--primary-color)] bg-white hover:bg-[var(--primary-color)] transition-colors focus:outline-none mr-2"
+                    className="group flex items-center justify-center w-8 h-8 rounded-md border border-primary bg-white hover:bg-primary transition-colors focus:outline-none mr-2"
                     onClick={async () => {
                       setShowAttendeeList(true);
                       setLoadingAttendees(true);
@@ -499,7 +499,7 @@ export default function MapView({ schoolKey }: { schoolKey?: string }) {
                       setLoadingAttendees(false);
                     }}
                   >
-                    <Users className="w-5 h-5 text-[var(--primary-color)] group-hover:text-white transition-colors" />
+                    <Users className="w-5 h-5 text-primary group-hover:text-white transition-colors" />
                   </button>
                 ) : (
                   <Users className="w-4 h-4 mr-2 university-primary-text" />

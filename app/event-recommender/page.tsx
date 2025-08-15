@@ -268,15 +268,15 @@ export default function EventRecommenderPage() {
 
                     <div className="space-y-2 mb-4">
                       <div className="flex items-center text-gray-500">
-                        <CalendarIcon className="w-4 h-4 mr-2 text-[var(--primary-color)]" />
+                        <CalendarIcon className="w-4 h-4 mr-2 text-primary" />
                         <span className="text-sm">{event.date} • {event.time}</span>
                       </div>
                       <div className="flex items-center text-gray-500">
-                        <MapPin className="w-4 h-4 mr-2 text-[var(--primary-color)]" />
+                        <MapPin className="w-4 h-4 mr-2 text-primary" />
                         <span className="text-sm line-clamp-1">{event.location}</span>
                       </div>
                       <div className="flex items-center text-gray-500">
-                        <Users className="w-4 h-4 mr-2 text-[var(--primary-color)]" />
+                        <Users className="w-4 h-4 mr-2 text-primary" />
                         <span className="text-sm">{event.current_attendees} / {event.max_attendees} attendees</span>
                       </div>
                     </div>
