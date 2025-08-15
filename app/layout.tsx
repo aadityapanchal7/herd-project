@@ -14,7 +14,7 @@ import { ThemeProvider } from "@/context/theme-context";
 const manrope = Manrope({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Herd | Find Your Next Event",
+  title: "Herd | Find Your Next Campus Event",
   description: "Manage and join community events",
 };
 
