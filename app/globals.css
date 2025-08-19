@@ -1,7 +1,11 @@
 @import '../styles/tokens.css';
+
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+
 
 /* ---------------------- */
 /*        BASE            */
@@ -78,8 +82,8 @@
 .fallback-map {
   background-color: #f0f0f0;
   background-image:
-    linear-gradient(0deg, transparent 24%, rgba(0,0,0,0.05) 25%, rgba(0,0,0,0.05) 26%, transparent 27%, transparent 74%, rgba(0,0,0,0.05) 75%, rgba(0,0,0,0.05) 76%, transparent 77%, transparent),
-    linear-gradient(90deg, transparent 24%, rgba(0,0,0,0.05) 25%, rgba(0,0,0,0.05) 26%, transparent 27%, transparent 74%, rgba(0,0,0,0.05) 75%, rgba(0,0,0,0.05) 76%, transparent 77%, transparent);
+    linear-gradient(0deg, transparent 24%, rgba(0, 0, 0, 0.05) 25%, rgba(0, 0, 0, 0.05) 26%, transparent 27%, transparent 74%, rgba(0, 0, 0, 0.05) 75%, rgba(0, 0, 0, 0.05) 76%, transparent 77%, transparent),
+    linear-gradient(90deg, transparent 24%, rgba(0, 0, 0, 0.05) 25%, rgba(0, 0, 0, 0.05) 26%, transparent 27%, transparent 74%, rgba(0, 0, 0, 0.05) 75%, rgba(0, 0, 0, 0.05) 76%, transparent 77%, transparent);
   background-size: 50px 50px;
 }
 
@@ -116,11 +120,25 @@
 }
 
 /* Category‑specific fill colors */
-.marker-social   .marker-inner { background-color: #A855F7; }
-.marker-academic .marker-inner { background-color: #22C55E; }
-.marker-sports   .marker-inner { background-color: #EF4444; }
-.marker-arts     .marker-inner { background-color: #ec65a8; }
-.marker-default  .marker-inner { background-color: #6B7280; }
+.marker-social .marker-inner {
+  background-color: #A855F7;
+}
+
+.marker-academic .marker-inner {
+  background-color: #22C55E;
+}
+
+.marker-sports .marker-inner {
+  background-color: #EF4444;
+}
+
+.marker-arts .marker-inner {
+  background-color: #ec65a8;
+}
+
+.marker-default .marker-inner {
+  background-color: #6B7280;
+}
 
 /* ---------------------- */
 /*   TINDER CARD STYLES   */
@@ -145,7 +163,7 @@
 }
 
 /* Card stacking visual effect */
-.react-tinder-card > div {
+.react-tinder-card>div {
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
   border-radius: 16px;
   transition: transform 0.2s ease-out;

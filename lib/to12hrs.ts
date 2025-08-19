@@ -7,5 +7,5 @@ export function to12h(time24?: string | null): string {
     const mm = m[2];
     const am = h < 12;
     const h12 = (h % 12) || 12;
-    return `${h12}:${mm} ${am ? "am" : "pm"}`;
+    return `${h12}:${mm} ${am ? "AM" : "PM"}`;
 }

@@ -1,38 +1,32 @@
-'use client'
+// components/chat-message.tsx
+'use client';
 
-import { useState } from 'react'
-import { cn } from '@/lib/utils'
-import { type ChatMessage, type MessageReaction } from '@/hooks/use-realtime-chat'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { useState } from 'react';
+import { cn } from '@/lib/utils';
+import { type ChatMessage, type MessageReaction } from '@/hooks/use-realtime-chat';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu'
-import {
-  MoreHorizontal,
-  Trash2,
-  Edit3,
-  Smile,
-  Check,
-  X
-} from 'lucide-react'
+} from '@/components/ui/dropdown-menu';
+import { MoreHorizontal, Trash2, Edit3, Smile, Check, X } from 'lucide-react';
 
 interface ChatMessageItemProps {
-  message: ChatMessage
-  isOwnMessage: boolean
-  showHeader: boolean
-  currentUserId?: string
-  /** NEW: who created the event (to show “Creator” badge to others) */
-  creatorId?: string
-  onReaction?: (messageId: string, emoji: string) => void
-  onDelete?: (messageId: string) => void
-  onEdit?: (messageId: string, newContent: string) => void
+  message: ChatMessage;
+  isOwnMessage: boolean;
+  showHeader: boolean;
+  currentUserId?: string;
+  /** Who created the event (to show “Creator” badge to others) */
+  creatorId?: string;
+  onReaction?: (messageId: string, emoji: string) => void;
+  onDelete?: (messageId: string) => void;
+  onEdit?: (messageId: string, newContent: string) => void;
 }
 
-const commonEmojis = ['👍', '👎', '❤️', '😂', '😮', '😢', '😡', '🎉']
+const commonEmojis = ['👍', '👎', '❤️', '😂', '😮', '😢', '😡', '🎉'];
 
 export function ChatMessageItem({
   message,
@@ -44,56 +38,58 @@ export function ChatMessageItem({
   onDelete,
   onEdit
 }: ChatMessageItemProps) {
-  const [isEditing, setIsEditing] = useState(false)
-  const [editContent, setEditContent] = useState(message.content)
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(message.content);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   const formatTime = (timestamp: string) => {
-    const date = new Date(timestamp)
-    return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).toLowerCase()
-  }
+    try {
+      const date = new Date(timestamp);
+      return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).toLowerCase();
+    } catch {
+      return '';
+    }
+  };
+
+  const timeLabel = formatTime(message.createdAt);
+  const senderName = message.user?.name?.trim() || 'Unknown User';
+  const isCreator = !!creatorId && message.user?.id === creatorId;
 
   const handleEdit = () => {
-    if (editContent.trim() && editContent !== message.content && onEdit) {
-      onEdit(message.id, editContent.trim())
+    const newText = editContent.trim();
+    if (newText && newText !== message.content && onEdit) {
+      onEdit(message.id, newText);
     }
-    setIsEditing(false)
-  }
+    setIsEditing(false);
+  };
 
   const cancelEdit = () => {
-    setEditContent(message.content)
-    setIsEditing(false)
-  }
+    setEditContent(message.content);
+    setIsEditing(false);
+  };
 
   const handleReaction = (emoji: string) => {
-    onReaction?.(message.id, emoji)
-    setShowEmojiPicker(false)
-  }
+    onReaction?.(message.id, emoji);
+    setShowEmojiPicker(false);
+  };
 
-  if (message.isDeleted) {
-    return (
-      <div className={cn('flex w-full', isOwnMessage ? 'justify-end' : 'justify-start')}>
-        <div className="max-w-[70%] space-y-1">
-          <div className="rounded-lg px-3 py-2 text-sm break-words bg-muted/50 text-muted-foreground italic">
-            <Trash2 className="inline h-3 w-3 mr-1" />
-            This message was deleted
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  const isCreator = creatorId && message.user?.id === creatorId
+  const editedFlag =
+    message.updatedAt && message.updatedAt !== message.createdAt && !message.isDeleted;
 
   return (
     <div className={cn('flex w-full group', isOwnMessage ? 'justify-end' : 'justify-start')}>
       <div className={cn('max-w-[70%] space-y-1', isOwnMessage ? 'items-end' : 'items-start')}>
+        {/* Header row: keep timestamp always; hide YOUR name; show others' (+ Creator badge) */}
         {showHeader && (
-          <div className={cn('flex items-center gap-2 text-xs text-muted-foreground px-3')}>
-            {/* 👇 Hide *your own* name; show others’ names. If they are the creator, badge it. */}
+          <div
+            className={cn(
+              'flex items-center gap-2 text-xs text-muted-foreground px-3',
+              isOwnMessage ? 'justify-end' : 'justify-start'
+            )}
+          >
             {!isOwnMessage && (
               <>
-                <span className="font-medium">{message.user.name}</span>
+                <span className="font-medium">{senderName}</span>
                 {isCreator && (
                   <span className="ml-1 rounded-full bg-[var(--primary-color)] text-[var(--text-color)] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
                     Creator
@@ -101,26 +97,25 @@ export function ChatMessageItem({
                 )}
               </>
             )}
-            <span>{formatTime(message.createdAt)}</span>
-            {message.updatedAt && message.updatedAt !== message.createdAt && (
-              <span className="italic">(edited)</span>
-            )}
+            <span>{timeLabel}</span>
+            {editedFlag && <span className="italic">(edited)</span>}
+            {message.isDeleted && <span className="italic text-red-600">deleted</span>}
           </div>
         )}
 
         <div className="relative">
-          {isEditing ? (
+          {isEditing && !message.isDeleted ? (
             <div className="space-y-2">
               <Input
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault()
-                    handleEdit()
+                    e.preventDefault();
+                    handleEdit();
                   }
                   if (e.key === 'Escape') {
-                    cancelEdit()
+                    cancelEdit();
                   }
                 }}
                 className="w-full"
@@ -148,56 +143,64 @@ export function ChatMessageItem({
             <div
               className={cn(
                 'rounded-lg px-3 py-2 text-sm break-words relative',
-                isOwnMessage ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'
+                isOwnMessage ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground',
+                message.isDeleted && (isOwnMessage ? 'opacity-80' : 'opacity-80')
               )}
             >
-              {message.content}
+              {message.isDeleted ? (
+                <i className="opacity-80">
+                  <Trash2 className="inline h-3 w-3 mr-1" />
+                  Message deleted
+                </i>
+              ) : (
+                message.content
+              )}
 
-              {/* Floating actions (emoji + more). Hide the 3-dots entirely for OTHER peoples’ messages */}
-              <div className="absolute -top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                <div className="flex gap-1 bg-gray-800 border border-gray-700 rounded-md shadow-lg p-1">
-                  {/* Emoji */}
-                  <DropdownMenu open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 w-6 p-0 text-gray-300 hover:text-white hover:bg-gray-700 transition-colors"
-                      >
-                        <Smile className="h-3 w-3" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-auto p-2 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                      <div className="grid grid-cols-4 gap-1">
-                        {commonEmojis.map((emoji) => (
-                          <Button
-                            key={emoji}
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                            onClick={() => handleReaction(emoji)}
-                          >
-                            {emoji}
-                          </Button>
-                        ))}
-                      </div>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-
-                  {/* 3-dots ONLY for your own messages */}
-                  {isOwnMessage && (
-                    <DropdownMenu>
+              {/* Floating actions (emoji + more). 3-dots only for your own messages; hide actions on deleted */}
+              {!message.isDeleted && (
+                <div className="absolute -top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex gap-1 bg-gray-800 border border-gray-700 rounded-md shadow-lg p-1">
+                    {/* Emoji */}
+                    <DropdownMenu open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
                       <DropdownMenuTrigger asChild>
                         <Button
                           variant="ghost"
                           size="sm"
                           className="h-6 w-6 p-0 text-gray-300 hover:text-white hover:bg-gray-700 transition-colors"
                         >
-                          <MoreHorizontal className="h-3 w-3" />
+                          <Smile className="h-3 w-3" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                        {onEdit && (
+                      <DropdownMenuContent className="w-auto p-2 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                        <div className="grid grid-cols-4 gap-1">
+                          {commonEmojis.map((emoji) => (
+                            <Button
+                              key={emoji}
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                              onClick={() => handleReaction(emoji)}
+                            >
+                              {emoji}
+                            </Button>
+                          ))}
+                        </div>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    {/* 3-dots ONLY for your own messages */}
+                    {isOwnMessage && onEdit && onDelete && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 text-gray-300 hover:text-white hover:bg-gray-700 transition-colors"
+                          >
+                            <MoreHorizontal className="h-3 w-3" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                           <DropdownMenuItem
                             onClick={() => setIsEditing(true)}
                             className="hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
@@ -205,8 +208,6 @@ export function ChatMessageItem({
                             <Edit3 className="h-4 w-4 mr-2" />
                             Edit message
                           </DropdownMenuItem>
-                        )}
-                        {onDelete && (
                           <DropdownMenuItem
                             onClick={() => onDelete(message.id)}
                             className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
@@ -214,23 +215,28 @@ export function ChatMessageItem({
                             <Trash2 className="h-4 w-4 mr-2" />
                             Delete message
                           </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
         </div>
 
-        {/* Reactions */}
-        {message.reactions && message.reactions.length > 0 && (
+        {/* If grouped (no header), still show YOUR timestamp so it never disappears */}
+        {!showHeader && isOwnMessage && (
+          <div className="mt-1 text-right text-[10px] text-muted-foreground">{timeLabel}</div>
+        )}
+
+        {/* Reactions (hide for deleted) */}
+        {!message.isDeleted && message.reactions && message.reactions.length > 0 && (
           <div className="flex flex-wrap gap-1 px-3">
             {message.reactions.map((reaction) => {
               const hasReacted = currentUserId
                 ? reaction.users.some((u) => u.user_id === currentUserId)
-                : false
+                : false;
               return (
                 <Button
                   key={reaction.emoji}
@@ -246,11 +252,11 @@ export function ChatMessageItem({
                 >
                   {reaction.emoji} {reaction.count}
                 </Button>
-              )
+              );
             })}
           </div>
         )}
       </div>
     </div>
-  )
+  );
 }

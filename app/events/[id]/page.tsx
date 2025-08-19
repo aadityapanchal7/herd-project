@@ -347,39 +347,41 @@ export default function EventDetailPage() {
                 )}
               </div>
 
-              {event.allow_rsvp && (
-                <div className="flex justify-center gap-3">
-                  {isOwner ? (
-                    <Badge variant="secondary">Your Event</Badge>
-                  ) : hasRSVPd ? (
-                    <>
-                      <Badge variant="secondary" className="bg-green-100 text-green-700">
-                        ✓ RSVP’d
-                      </Badge>
-                      <Button
-                        variant="outline"
-                        className="border-rose-600 text-rose-600 hover:bg-rose-600 hover:text-white"
-                        onClick={handleRemoveRSVP}
-                      >
-                        Remove RSVP
-                      </Button>
-                    </>
-                  ) : isFull ? (
-                    <Badge variant="secondary" className="bg-red-100 text-red-700">
-                      Event Full
+              {/* RSVP / No-RSVP area */}
+              <div className="flex justify-center gap-3">
+                {!event.allow_rsvp ? (
+                  <Badge variant="secondary" className="bg-slate-100 text-slate-700">
+                    This event doesn’t require RSVP
+                  </Badge>
+                ) : isOwner ? (
+                  <Badge variant="secondary">Your Event</Badge>
+                ) : hasRSVPd ? (
+                  <>
+                    <Badge variant="secondary" className="bg-green-100 text-green-700">
+                      ✓ RSVP’d
                     </Badge>
-                  ) : (
                     <Button
-                      onClick={handleRSVP}
-                      disabled={!canRSVP || isRsvping}
-                      className="university-button px-8 py-3"
+                      variant="outline"
+                      className="border-rose-600 text-rose-600 hover:bg-rose-600 hover:text-white"
+                      onClick={handleRemoveRSVP}
                     >
-                      {isRsvping ? 'Processing...' : 'RSVP for Event'}
+                      Remove RSVP
                     </Button>
-                  )}
-                </div>
-              )}
-
+                  </>
+                ) : isFull ? (
+                  <Badge variant="secondary" className="bg-red-100 text-red-700">
+                    Event Full
+                  </Badge>
+                ) : (
+                  <Button
+                    onClick={handleRSVP}
+                    disabled={!canRSVP || isRsvping}
+                    className="university-button px-8 py-3"
+                  >
+                    {isRsvping ? 'Processing...' : 'RSVP for Event'}
+                  </Button>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>

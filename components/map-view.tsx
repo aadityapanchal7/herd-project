@@ -12,6 +12,7 @@ import { useToast } from "@/components/ui/use-toast";
 import type { Event } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { AvatarThumb } from "@/components/avatar-thumb";
+import { to12h } from "@/lib/to12hrs"; // <-- NEW
 
 // Dynamically import LeafletMap (no SSR)
 const LeafletMap = dynamic(() => import("@/components/leaflet-map"), { ssr: false });
@@ -410,7 +411,8 @@ export default function MapView({ schoolKey }: { schoolKey?: string }) {
                   <h3 className="text-xl font-semibold mt-2 mb-1">{evt.title}</h3>
                   <p className="text-sm text-zinc-500 mb-1 flex items-center">
                     <CalIcon className="w-4 h-4 mr-1 university-primary-text" />
-                    {evt.date} at {evt.time}
+                    {evt.date} at {to12h(evt.time)}
+                    {evt.time_zone ? ` ${evt.time_zone}` : ""} {/* <-- 12h + TZ */}
                   </p>
                   <p className="text-sm text-zinc-500 mb-1 flex items-center">
                     <MapPin className="w-4 h-4 mr-1 university-primary-text" />
@@ -468,7 +470,8 @@ export default function MapView({ schoolKey }: { schoolKey?: string }) {
               <div className="flex items-center text-gray-500">
                 <CalIcon className="w-4 h-4 mr-2 university-primary-text" />
                 <span>
-                  {viewEventDetail.date} • {viewEventDetail.time}
+                  {viewEventDetail.date} • {to12h(viewEventDetail.time)}
+                  {viewEventDetail.time_zone ? ` ${viewEventDetail.time_zone}` : ""} {/* <-- 12h + TZ */}
                 </span>
               </div>
               <div className="flex items-center text-gray-500">
@@ -476,10 +479,7 @@ export default function MapView({ schoolKey }: { schoolKey?: string }) {
                 <span>{viewEventDetail.location}</span>
               </div>
 
-              {/* RSVP row (modal only): 
-                 - RSVPs off -> inline "No RSVP needed" (no button)
-                 - RSVPs on -> icon button opens attendee list
-              */}
+              {/* RSVP row (modal only) */}
               <div className="flex items-center text-gray-500">
                 {viewEventDetail.allow_rsvp ? (
                   <button
