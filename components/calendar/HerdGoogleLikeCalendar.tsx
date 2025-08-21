@@ -47,7 +47,6 @@ import {
   ChevronRight,
   Calendar as CalendarIcon,
   List,
-  ArrowLeft,
   CheckCircle2,
   Bookmark,
   MapPin,
@@ -318,6 +317,8 @@ export default function HerdGoogleLikeCalendar({
   loading = false,
 }: HerdGoogleLikeCalendarProps) {
   const router = useRouter()
+
+  // Track viewport for responsive Day/Week switching
   const [isMobile, setIsMobile] = useState(false)
   useEffect(() => {
     const sync = () => setIsMobile(window.innerWidth < 768)
@@ -326,12 +327,12 @@ export default function HerdGoogleLikeCalendar({
     return () => window.removeEventListener('resize', sync)
   }, [])
 
-  // ✅ Initialize from localStorage/URL synchronously to avoid view flash
+  // Initialize from saved state (or device default if none / ?reset=1)
   const initRef = useRef(loadInitial(viewMode))
   const [currentView, setCurrentView] = useState<AnyView>(initRef.current.view)
   const [currentDate, setCurrentDate] = useState<Date>(initRef.current.date)
 
-  // ✅ Persist last {view,date}
+  // Persist last {view,date}
   useEffect(() => {
     try {
       const payload: StoredState = { view: currentView, dateISO: currentDate.toISOString() }
@@ -339,7 +340,16 @@ export default function HerdGoogleLikeCalendar({
     } catch { }
   }, [currentView, currentDate])
 
-  // Snap to first-of-month whenever we enter List (agenda)
+  // ✅ Responsive switching ONLY between Day/Week on viewport change.
+  // Never override List (agenda).
+  useEffect(() => {
+    setCurrentView(prev =>
+      prev === 'agenda' ? prev : (isMobile ? Views.DAY : Views.WEEK)
+    )
+    // keep date as-is; do not jump to "today" on width change
+  }, [isMobile])
+
+  // Snap to first-of-month when entering List (agenda)
   useEffect(() => {
     if (currentView === 'agenda') setCurrentDate((d) => startOfMonth(d))
   }, [currentView])
