@@ -1,3 +1,4 @@
+// components/realtime-chat.tsx
 'use client';
 
 import { cn } from '@/lib/utils';
@@ -23,6 +24,44 @@ interface RealtimeChatProps {
   /** event creator's user id so we can tag them as "Creator" */
   creatorId?: string;
 }
+
+/** ---------- Date divider helpers ---------- */
+function startOfDay(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+function formatDayLabel(date: Date) {
+  const today = startOfDay(new Date());
+  const that = startOfDay(date);
+  const diffDays = Math.round((today.getTime() - that.getTime()) / 86_400_000);
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+
+  // Show weekday for recent context; include year if different
+  const opts: Intl.DateTimeFormatOptions = {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  };
+  if (date.getFullYear() !== today.getFullYear()) {
+    opts.year = 'numeric';
+  }
+  return date.toLocaleDateString(undefined, opts);
+}
+
+function DateDivider({ ts }: { ts: string }) {
+  const label = formatDayLabel(new Date(ts));
+  return (
+    <div className="my-4 flex items-center gap-3">
+      <div className="h-px flex-1 bg-border" />
+      <span className="text-xs text-muted-foreground whitespace-nowrap">
+        {label}
+      </span>
+      <div className="h-px flex-1 bg-border" />
+    </div>
+  );
+}
+/** ----------------------------------------- */
 
 export function RealtimeChat({
   eventId,
@@ -101,6 +140,65 @@ export function RealtimeChat({
     );
   }
 
+  /** Build the render list with date dividers when the day changes */
+  const renderedList = useMemo(() => {
+    const items: React.ReactNode[] = [];
+    let lastDayKey: string | null = null;
+
+    for (let i = 0; i < allMessages.length; i++) {
+      const message = allMessages[i];
+      const isOwn = message.user.id === userId;
+
+      // Find the previous NON-DELETED message to base grouping on.
+      let prevNonDeleted: ChatMessage | null = null;
+      for (let j = i - 1; j >= 0; j--) {
+        const cand = allMessages[j];
+        if (!cand.isDeleted) {
+          prevNonDeleted = cand;
+          break;
+        }
+      }
+
+      // ----- date divider logic -----
+      const dayKey = new Date(message.createdAt).toDateString();
+      if (dayKey !== lastDayKey) {
+        items.push(<DateDivider key={`day-${dayKey}-${i}`} ts={message.createdAt} />);
+        lastDayKey = dayKey;
+      }
+      // --------------------------------
+
+      const sameSender =
+        !!prevNonDeleted?.user.id &&
+        prevNonDeleted.user.id === message.user.id;
+
+      const gapMs = prevNonDeleted
+        ? new Date(message.createdAt).getTime() -
+        new Date(prevNonDeleted.createdAt).getTime()
+        : Number.POSITIVE_INFINITY;
+
+      // We never show our own name.
+      // For other people: show at start of their group or when >= 1h gap.
+      const showHeader =
+        !isOwn && (!prevNonDeleted || !sameSender || gapMs >= 60 * 60 * 1000);
+
+      items.push(
+        <div key={message.id} className="animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <ChatMessageItem
+            message={message}
+            isOwnMessage={isOwn}
+            showHeader={showHeader}
+            currentUserId={userId}
+            creatorId={creatorId}
+            onReaction={addReaction}
+            onDelete={deleteMessage}
+            onEdit={editMessage}
+          />
+        </div>
+      );
+    }
+    return items;
+  }, [allMessages, userId, creatorId, addReaction, deleteMessage, editMessage]);
+
   return (
     <Card className={cn('flex h-full w-full flex-col bg-background text-foreground antialiased', className)}>
       <CardHeader>
@@ -121,50 +219,7 @@ export function RealtimeChat({
               No messages yet. Start the conversation!
             </div>
           ) : null}
-          <div className="space-y-1">
-            {allMessages.map((message, i) => {
-              const isOwn = message.user.id === userId;
-
-              // Find the previous NON-DELETED message to base grouping on.
-              let prevNonDeleted: ChatMessage | null = null;
-              for (let j = i - 1; j >= 0; j--) {
-                const cand = allMessages[j];
-                if (!cand.isDeleted) {
-                  prevNonDeleted = cand;
-                  break;
-                }
-              }
-
-              const sameSender =
-                !!prevNonDeleted?.user.id &&
-                prevNonDeleted.user.id === message.user.id;
-
-              const gapMs = prevNonDeleted
-                ? new Date(message.createdAt).getTime() -
-                new Date(prevNonDeleted.createdAt).getTime()
-                : Number.POSITIVE_INFINITY;
-
-              // We never show our own name.
-              // For other people: show at start of their group or when >= 1h gap.
-              const showHeader =
-                !isOwn && (!prevNonDeleted || !sameSender || gapMs >= 60 * 60 * 1000);
-
-              return (
-                <div key={message.id} className="animate-in fade-in slide-in-from-bottom-4 duration-300">
-                  <ChatMessageItem
-                    message={message}
-                    isOwnMessage={isOwn}
-                    showHeader={showHeader}
-                    currentUserId={userId}
-                    creatorId={creatorId}
-                    onReaction={addReaction}
-                    onDelete={deleteMessage}
-                    onEdit={editMessage}
-                  />
-                </div>
-              );
-            })}
-          </div>
+          <div className="space-y-1">{renderedList}</div>
         </div>
 
         {/* Composer */}

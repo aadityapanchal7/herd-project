@@ -122,7 +122,38 @@ const catKeyToClass = (cat?: keyof typeof CATEGORY_COLORS) => {
   }
 }
 
+/* ---------- Persistence for last view/date ---------- */
+const STORAGE_KEY = 'herd:calendar:last-state' as const
+type StoredState = { view: AnyView; dateISO: string }
 
+function deviceDefault(viewMode: 'week' | 'agenda', isMobileGuess: boolean) {
+  if (viewMode === 'agenda') return { view: 'agenda' as AnyView, date: startOfMonth(new Date()) }
+  return { view: (isMobileGuess ? Views.DAY : Views.WEEK) as AnyView, date: new Date() }
+}
+
+function loadInitial(viewMode: 'week' | 'agenda') {
+  const isBrowser = typeof window !== 'undefined'
+  const search = isBrowser ? new URLSearchParams(window.location.search) : null
+  const shouldReset = search?.get('reset') === '1'
+  const isMobileGuess = isBrowser ? window.matchMedia('(max-width: 767px)').matches : false
+
+  if (!shouldReset && isBrowser) {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY)
+      if (raw) {
+        const saved: StoredState = JSON.parse(raw)
+        const date = saved?.dateISO ? new Date(saved.dateISO) : new Date()
+        if (!isNaN(+date) && saved?.view) {
+          return { view: saved.view as AnyView, date }
+        }
+      }
+    } catch { }
+  } else if (shouldReset && isBrowser) {
+    try { localStorage.removeItem(STORAGE_KEY) } catch { }
+  }
+
+  return deviceDefault(viewMode, isMobileGuess)
+}
 
 /* ---------- Mini month grid used inside Day picker ---------- */
 function MiniMonthGrid({
@@ -295,26 +326,18 @@ export default function HerdGoogleLikeCalendar({
     return () => window.removeEventListener('resize', sync)
   }, [])
 
-  // Desktop defaults to WEEK; mobile starts at DAY
-  const [currentView, setCurrentView] = useState<AnyView>(
-    viewMode === 'agenda' ? 'agenda' : Views.WEEK
-  )
-  const [currentDate, setCurrentDate] = useState<Date>(() =>
-    viewMode === 'agenda' ? startOfMonth(new Date()) : new Date()
-  )
+  // ✅ Initialize from localStorage/URL synchronously to avoid view flash
+  const initRef = useRef(loadInitial(viewMode))
+  const [currentView, setCurrentView] = useState<AnyView>(initRef.current.view)
+  const [currentDate, setCurrentDate] = useState<Date>(initRef.current.date)
 
+  // ✅ Persist last {view,date}
   useEffect(() => {
-    if (viewMode === 'agenda') {
-      setCurrentView('agenda')
-      setCurrentDate(startOfMonth(new Date()))
-    } else if (isMobile) {
-      setCurrentView(Views.DAY)
-      setCurrentDate(new Date())
-    } else {
-      setCurrentView(Views.WEEK)
-      setCurrentDate(new Date())
-    }
-  }, [viewMode, isMobile])
+    try {
+      const payload: StoredState = { view: currentView, dateISO: currentDate.toISOString() }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
+    } catch { }
+  }, [currentView, currentDate])
 
   // Snap to first-of-month whenever we enter List (agenda)
   useEffect(() => {
@@ -770,8 +793,6 @@ export default function HerdGoogleLikeCalendar({
               <CalendarIcon className="h-4 w-4 mr-2" />
               Week
             </Button>
-
-
           </div>
         </div>
 
@@ -803,8 +824,6 @@ export default function HerdGoogleLikeCalendar({
               </button>
             )
           })}
-
-
         </div>
       </div>
     </div>
@@ -862,55 +881,95 @@ export default function HerdGoogleLikeCalendar({
                     }`
                   const loc = ev.resource?.location as string | undefined
                   const desc = (ev.resource?.description as string | undefined) || ''
+                  const poster =
+                    (ev.resource?.originalEvent as any)?.poster_url ||
+                    (ev.resource?.originalEvent as any)?.image_url ||
+                    (ev.resource?.originalEvent as any)?.poster ||
+                    (ev.resource?.originalEvent as any)?.image ||
+                    (ev.resource as any)?.poster_url ||
+                    (ev.resource as any)?.image_url ||
+                    (ev.resource as any)?.poster ||
+                    (ev.resource as any)?.image
 
                   return (
                     <button
                       key={ev.id}
                       onClick={() => router.push(`/events/${ev.id}`)}
-                      className="w-full text-left bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-shadow focus:outline-none focus:ring-2 focus:ring-blue-500 p-4"
+                      className="w-full text-left bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-shadow focus:outline-none focus:ring-2 focus:ring-blue-500 p-4 md:py-3 md:px-4"
                     >
-                      <div className="flex items-start gap-2">
-                        <span className={`marker ${markerClass} mt-1.5`} aria-hidden>
-                          <span className="marker-inner" />
-                        </span>
+                      <div className="flex items-start md:items-start justify-between gap-3">
+                        {/* Left: title/meta/desc */}
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center justify-between gap-2">
-                            <h3 className="text-base md:text-lg font-extrabold text-gray-900 truncate">
-                              {ev.title}
-                            </h3>
-                            <div className="flex items-center gap-2">
-                              {rsvpd && (
-                                <span className="inline-flex items-center gap-1 text-green-700 text-xs font-semibold px-2 py-1 rounded-full bg-green-100">
-                                  <CheckCircle2 className="h-3.5 w-3.5" /> RSVP’d
+                          <div className="flex items-start gap-2">
+                            <span className={`marker ${markerClass} mt-1.5`} aria-hidden>
+                              <span className="marker-inner" />
+                            </span>
+
+                            <div className="min-w-0 flex-1">
+                              {/* Title + pills on one row */}
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h3 className="text-base md:text-lg font-extrabold text-gray-900 truncate">
+                                  {ev.title}
+                                </h3>
+                                {rsvpd && (
+                                  <span className="inline-flex items-center gap-1 text-green-700 text-xs font-semibold px-2 py-1 rounded-full bg-green-100">
+                                    <CheckCircle2 className="h-3.5 w-3.5" /> RSVP’d
+                                  </span>
+                                )}
+                                {saved && (
+                                  <span className="inline-flex items-center gap-1 text-purple-700 text-xs font-semibold px-2 py-1 rounded-full bg-purple-100">
+                                    <Bookmark className="h-3.5 w-3.5" /> Saved
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Meta */}
+                              <div className="mt-1 flex flex-col sm:flex-row sm:items-center gap-1.5 text-[13px] text-gray-600">
+                                <span className="inline-flex items-center gap-1.5">
+                                  <Clock className="h-3.5 w-3.5" />
+                                  {timeLabel}
                                 </span>
-                              )}
-                              {saved && (
-                                <span className="inline-flex items-center gap-1 text-purple-700 text-xs font-semibold px-2 py-1 rounded-full bg-purple-100">
-                                  <Bookmark className="h-3.5 w-3.5" /> Saved
-                                </span>
+                                {loc && (
+                                  <span className="inline-flex items-center gap-1.5">
+                                    <MapPin className="h-3.5 w-3.5" />
+                                    {loc}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Description preview */}
+                              {desc && (
+                                <p className="mt-2 text-sm text-gray-700 line-clamp-3">
+                                  {desc}
+                                </p>
                               )}
                             </div>
                           </div>
-
-                          <div className="mt-1 flex flex-col sm:flex-row sm:items-center gap-1.5 text-[13px] text-gray-600">
-                            <span className="inline-flex items-center gap-1.5">
-                              <Clock className="h-3.5 w-3.5" />
-                              {timeLabel}
-                            </span>
-                            {loc && (
-                              <span className="inline-flex items-center gap-1.5">
-                                <MapPin className="h-3.5 w-3.5" />
-                                {loc}
-                              </span>
-                            )}
-                          </div>
-
-                          {desc && (
-                            <p className="mt-2 text-sm text-gray-700 line-clamp-3">
-                              {desc}
-                            </p>
-                          )}
                         </div>
+
+                        {/* Right: poster image (mobile + web) */}
+                        {poster && (
+                          <>
+                            {/* mobile image */}
+                            <div className="flex md:hidden flex-shrink-0 self-start">
+                              <img
+                                src={poster}
+                                alt={`${ev.title} poster`}
+                                className="h-24 w-32 object-cover rounded-lg ml-2 border border-gray-200"
+                                loading="lazy"
+                              />
+                            </div>
+                            {/* web image — align to top-left */}
+                            <div className="hidden md:flex md:flex-shrink-0 self-start my-1 mr-2">
+                              <img
+                                src={poster}
+                                alt={`${ev.title} poster`}
+                                className="block h-[150px] lg:h-[170px] w-auto rounded-xl object-cover border border-gray-200 shadow-sm"
+                                loading="lazy"
+                              />
+                            </div>
+                          </>
+                        )}
                       </div>
                     </button>
                   )

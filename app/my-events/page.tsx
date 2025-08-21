@@ -22,7 +22,6 @@ export default function MyEventsCalendarPage() {
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
 
-  // auth gate
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       toast({
@@ -34,7 +33,6 @@ export default function MyEventsCalendarPage() {
     }
   }, [authLoading, isAuthenticated, router, toast])
 
-  // fetch calendar rows
   useEffect(() => {
     let mounted = true
       ; (async () => {
@@ -63,15 +61,9 @@ export default function MyEventsCalendarPage() {
   if (authLoading || loading) {
     return (
       <div className="min-h-screen flex flex-col bg-white">
-        {/* Slim page header (no global Header) */}
         <div className="border-b bg-white">
           <div className="mx-auto max-w-6xl px-4 py-3">
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => router.back()}
-              className="pl-0 text-primary hover:bg-transparent"
-            >
+            <Button size="sm" variant="ghost" onClick={() => router.back()} className="pl-0 text-primary hover:bg-transparent">
               <ChevronLeft className="mr-1 h-4 w-4" />
               Back
             </Button>
@@ -97,15 +89,9 @@ export default function MyEventsCalendarPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
-      {/* Slim page header (no global Header) */}
       <div className="border-b bg-white">
         <div className="mx-auto max-w-6xl px-4 py-3">
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => router.back()}
-            className="pl-0 text-primary hover:bg-transparent"
-          >
+          <Button size="sm" variant="ghost" onClick={() => router.back()} className="pl-0 text-primary hover:bg-transparent">
             <ChevronLeft className="mr-1 h-4 w-4" />
             Back
           </Button>
@@ -117,13 +103,13 @@ export default function MyEventsCalendarPage() {
               <Calendar className="h-8 w-8 text-primary" />
               <h1 className="text-2xl font-normal text-gray-900">Calendar</h1>
             </div>
-            {/* intentionally no "Create" UI */}
           </div>
         </div>
       </div>
 
       <main className="flex-1 bg-white">
         <div className="mx-auto max-w-6xl px-4 py-4">
+          {/* default prop is fine; calendar now restores last view/date unless ?reset=1 */}
           <HerdFullCalendar rows={rows} viewMode="week" className="h-full" />
         </div>
       </main>
