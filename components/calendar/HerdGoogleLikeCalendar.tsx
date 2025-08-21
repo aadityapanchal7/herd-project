@@ -340,7 +340,7 @@ export default function HerdGoogleLikeCalendar({
     } catch { }
   }, [currentView, currentDate])
 
-  // ✅ Responsive switching ONLY between Day/Week on viewport change.
+  // Responsive switching ONLY between Day/Week on viewport change.
   // Never override List (agenda).
   useEffect(() => {
     setCurrentView(prev =>
@@ -480,7 +480,7 @@ export default function HerdGoogleLikeCalendar({
                 <DatePickerSheet date={currentDate} onChange={(d) => setCurrentDate(d)} />
               )}
 
-              {/* Title with chevrons to its right (moved here) */}
+              {/* Title with chevrons to its right */}
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl font-bold text-gray-900 select-none">
                   {isAgenda ? monthRange : label}
@@ -616,10 +616,12 @@ export default function HerdGoogleLikeCalendar({
           marginLeft: 4,
           marginRight: 6,
           borderRadius: 8,
+          overflow: 'visible', // prevent pill clipping
         },
       } as any
     }
 
+    // Week view: let RBC compute layout; don't override width/display
     return {
       style: {
         backgroundColor: colors.bg,
@@ -634,9 +636,6 @@ export default function HerdGoogleLikeCalendar({
         cursor: 'pointer',
         boxShadow: '0 1px 3px rgba(60, 64, 67, 0.12)',
         transition: 'all .15s ease',
-        display: 'inline-block',
-        width: 'auto',
-        maxWidth: '95%',
       },
     }
   }
@@ -647,13 +646,14 @@ export default function HerdGoogleLikeCalendar({
     if (dayView) {
       const catKey = (event?.resource?.category as keyof typeof CATEGORY_COLORS) || 'default'
       const markerClass = catKeyToClass(catKey)
+      // small pill with category dot (top-left)
       return (
-        <div className="pointer-events-none">
-          <span className="rbc-chip inline-flex items-center gap-2 pointer-events-none">
+        <div className="relative pointer-events-none">
+          <span className="absolute left-1 top-1 rbc-chip inline-flex items-center gap-2">
             <span className={`marker ${markerClass}`} aria-hidden>
               <span className="marker-inner" />
             </span>
-            <span className="font-semibold">{titleOnly}</span>
+            <span className="font-semibold text-[13px] leading-none">{titleOnly}</span>
           </span>
         </div>
       )
@@ -1127,30 +1127,25 @@ export default function HerdGoogleLikeCalendar({
         .google-calendar-container.is-day .rbc-event-label,
         .google-calendar-container.is-week .rbc-event-label { display: none; }
 
+        /* Day: chip-style event */
+        .google-calendar-container.is-day .rbc-event { background: transparent; box-shadow: none; }
+        .google-calendar-container.is-day .rbc-day-slot .rbc-event {
+          display: block;
+          padding: 0;
+          border: none;
+          margin-bottom: 2px;
+          overflow: visible;
+        }
         .google-calendar-container.is-day .rbc-chip {
           border-radius: 16px;
-          padding: 6px 12px;
+          padding: 6px 10px;
           font-weight: 700;
           font-size: 13px;
           line-height: 1.2;
           white-space: nowrap;
           max-width: 100%;
           box-shadow: 0 1px 2px rgba(60, 64, 67, 0.1);
-        }
-        .google-calendar-container.is-day .rbc-event { background: transparent; box-shadow: none; }
-        .google-calendar-container.is-day .rbc-day-slot .rbc-event {
-          display: flex;
-          align-items: center;
-          justify-content: flex-start;
-          background: transparent;
-          box-shadow: none;
-          padding: 0 4px;
-          border: none;
-          margin-bottom: 2px;
-        }
-        .google-calendar-container.is-day .rbc-day-slot .rbc-event .rbc-chip {
-          margin-right: 6px;
-          width: max-content;
+          background: #fff;
         }
 
         /* Marker (outer + inner). Colors via classes below */

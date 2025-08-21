@@ -25,7 +25,7 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { format } from "date-fns";
+import { format, parse } from "date-fns";
 import { getUniversityByName } from "@/lib/universities";
 import { VENUE_COORDS } from "@/lib/school-cords";
 import { motion } from "framer-motion";
@@ -43,6 +43,41 @@ function uniqById<T extends { id: string }>(arr: T[]): T[] {
   const m = new Map<string, T>();
   for (const x of arr) m.set(x.id, x);
   return Array.from(m.values());
+}
+
+/** ---- Date helpers (fixes "one day earlier" bug) ----
+ * Never construct `new Date('YYYY-MM-DD')` (it’s parsed as UTC).
+ * We:
+ *  - Parse DB display dates like "Aug 17, 2025" in LOCAL time
+ *  - Convert to "YYYY-MM-DD" for the <input type="date">
+ *  - On save, parse that "YYYY-MM-DD" in LOCAL time and
+ *    reformat to "MMM d, yyyy" (to match what you store today)
+ */
+function dateToYMDLocal(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+function dbDateToYMD(dbDate: string | null | undefined): string {
+  if (!dbDate) return "";
+  // already yyyy-MM-dd
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dbDate)) return dbDate;
+
+  // try "MMM d, yyyy" (your current storage format)
+  const viaPretty = parse(dbDate, "MMM d, yyyy", new Date());
+  if (!isNaN(viaPretty.getTime())) return dateToYMDLocal(viaPretty);
+
+  // last resort: let JS parse it, then normalize to YMD (still local)
+  const fallback = new Date(dbDate);
+  if (!isNaN(fallback.getTime())) return dateToYMDLocal(fallback);
+
+  return "";
+}
+function ymdToPrettyLocal(ymd: string): string {
+  // Parse the date string in LOCAL time, then format pretty.
+  const d = parse(ymd, "yyyy-MM-dd", new Date());
+  return format(d, "MMM d, yyyy");
 }
 
 const UNLIMITED_CAP = 50_000;
@@ -66,13 +101,12 @@ export default function EditEventPage() {
 
   const dateRef = useRef<HTMLInputElement>(null);
   const timeRef = useRef<HTMLInputElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
     title: "",
     category: "",
     description: "",
-    date: "",
+    date: "",          // <-- always "YYYY-MM-DD" in state
     time: "",
     location: "",
     maxAttendees: "100", // used if public + limited
@@ -88,7 +122,6 @@ export default function EditEventPage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null);
-  const [removeImage, setRemoveImage] = useState(false);
 
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -125,7 +158,11 @@ export default function EditEventPage() {
     async function fetchEvent() {
       if (!eventId || !isAuthenticated) return;
       try {
-        const { data, error } = await supabase.from("events").select("*").eq("id", eventKey).single();
+        const { data, error } = await supabase
+          .from("events")
+          .select("*")
+          .eq("id", eventKey)
+          .single();
         if (error) throw error;
 
         if (data.created_by !== user?.id) {
@@ -140,8 +177,8 @@ export default function EditEventPage() {
 
         setEvent(data);
 
-        const eventDate = new Date(data.date);
-        const ymd = isNaN(eventDate.getTime()) ? "" : eventDate.toISOString().split("T")[0];
+        // Normalize DB date → "YYYY-MM-DD" for the date input (no TZ shift)
+        const ymd = dbDateToYMD(data.date);
 
         setFormData((prev) => ({
           ...prev,
@@ -158,13 +195,14 @@ export default function EditEventPage() {
 
         // RSVP flags from DB (public events only)
         setAllowRsvp(data.allow_rsvp === false ? "no" : "yes");
-        setLimitMode(data.allow_rsvp === false ? "limited" : data.rsvp_limited ? "limited" : "unlimited");
+        setLimitMode(
+          data.allow_rsvp === false ? "limited" : data.rsvp_limited ? "limited" : "unlimited"
+        );
 
         // Image
         const url = data.image_url ?? null;
         setExistingImageUrl(url);
         setImagePreview(url);
-        setRemoveImage(false);
 
         setLocationCoords({
           latitude: data.latitude || 0,
@@ -230,7 +268,6 @@ export default function EditEventPage() {
     setImageFile(file);
     if (file) {
       setImagePreview(URL.createObjectURL(file));
-      setRemoveImage(false);
     } else {
       setImagePreview(existingImageUrl ?? null);
     }
@@ -278,7 +315,17 @@ export default function EditEventPage() {
     setFormError(null);
     setIsSubmitting(true);
 
-    const { title, category, description, date, time, location, maxAttendees, creator_name, time_zone } = formData;
+    const {
+      title,
+      category,
+      description,
+      date, // "YYYY-MM-DD"
+      time,
+      location,
+      maxAttendees,
+      creator_name,
+      time_zone,
+    } = formData;
 
     if (!title || !category || !description || !date || !time || !location || !creator_name || !time_zone) {
       setFormError("Please fill out all required fields.");
@@ -322,12 +369,9 @@ export default function EditEventPage() {
     }
 
     try {
-      const parsedDate = new Date(date);
-      if (isNaN(parsedDate.getTime())) {
-        setFormError("Please select a valid date.");
-        setIsSubmitting(false);
-        return;
-      }
+      // ✅ Parse the "YYYY-MM-DD" string in LOCAL time, not UTC
+      // then reformat to your stored display format.
+      const prettyDate = ymdToPrettyLocal(date);
 
       // image upload (if new)
       let imageUrlToSave: string | null | undefined = undefined;
@@ -348,20 +392,21 @@ export default function EditEventPage() {
         title,
         category,
         description,
-        date: format(parsedDate, "MMM d, yyyy"),
+        date: prettyDate, // <-- fixed: no UTC conversion
         time,
         location,
         creator_name,
         latitude: locationCoords?.latitude,
         longitude: locationCoords?.longitude,
         university_id: universityId,
-        time_zone: formData.time_zone,
+        time_zone,
       };
 
       // image field precedence
       if (typeof imageUrlToSave !== "undefined") {
         updates.image_url = imageUrlToSave;
-      } else if (removeImage) {
+      } else if (imagePreview === null) {
+        // user clicked remove
         updates.image_url = null;
       }
 
@@ -623,7 +668,6 @@ export default function EditEventPage() {
               </div>
             </motion.div>
 
-
             {/* Location */}
             <FormBlock>
               <Label htmlFor="location">Location</Label>
@@ -647,7 +691,6 @@ export default function EditEventPage() {
               </Select>
             </FormBlock>
 
-            {/* Image uploader */}
             {/* Image uploader – mobile-first */}
             <div className="space-y-2">
               <Label>Event Flyer / Poster (optional)</Label>
@@ -658,7 +701,6 @@ export default function EditEventPage() {
                   htmlFor="flyer"
                   className="group relative w-full sm:w-64 overflow-hidden rounded-lg border-2 border-dashed border-zinc-300 hover:border-zinc-400 bg-white transition-colors"
                 >
-                  {/* Keep a steady ratio so it doesn’t jump around on mobile */}
                   <div className="aspect-video w-full">
                     {imagePreview ? (
                       <img
@@ -670,7 +712,6 @@ export default function EditEventPage() {
                       <div className="h-full w-full grid place-items-center">
                         <div className="text-center">
                           <div className="mx-auto mb-2 h-10 w-10 rounded-md border grid place-items-center">
-                            {/* your ImageIcon import */}
                             <ImageIcon className="h-5 w-5 text-zinc-400" />
                           </div>
                           <p className="text-sm font-medium text-zinc-800">Select Image</p>
@@ -680,7 +721,6 @@ export default function EditEventPage() {
                     )}
                   </div>
 
-                  {/* Subtle “Change” overlay on hover (desktop) */}
                   <div className="pointer-events-none absolute inset-0 hidden sm:flex items-center justify-center bg-black/0 group-hover:bg-black/20 transition-colors">
                     <span className="rounded-md bg-white/90 px-2 py-1 text-xs font-medium text-zinc-700 shadow">
                       Change
@@ -696,7 +736,6 @@ export default function EditEventPage() {
                   />
                 </label>
 
-                {/* Actions: full-width row on mobile, vertical on desktop */}
                 <div className="flex w-full sm:w-auto gap-2 sm:flex-col">
                   <Button
                     type="button"
@@ -714,7 +753,7 @@ export default function EditEventPage() {
                     onClick={() => {
                       setImageFile(null);
                       setImagePreview(null);
-                      setExistingImageUrl(null); // if you keep server image url
+                      setExistingImageUrl(null);
                     }}
                     className="w-full sm:w-32"
                   >
@@ -722,11 +761,7 @@ export default function EditEventPage() {
                   </Button>
                 </div>
               </div>
-
-              <p className="text-xs text-zinc-500">
-              </p>
             </div>
-
 
             {/* RSVP Settings (public only) */}
             {!isPrivate && (

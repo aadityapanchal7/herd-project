@@ -22,6 +22,7 @@ export default function MyEventsCalendarPage() {
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
 
+  // auth gate
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       toast({
@@ -33,24 +34,51 @@ export default function MyEventsCalendarPage() {
     }
   }, [authLoading, isAuthenticated, router, toast])
 
+  // fetch calendar rows: merge RSVPs + Saved
   useEffect(() => {
     let mounted = true
       ; (async () => {
         if (!user?.id) { setRows([]); setLoading(false); return }
         setLoading(true)
-        const { data, error } = await supabase
-          .from('user_calendar')
-          .select(`rsvpd, saved, event:events(*)`)
-          .eq('user_id', user.id)
 
-        if (error) {
-          console.error(error)
+        const [{ data: rsvpRows, error: rsvpErr }, { data: savedRows, error: savedErr }] =
+          await Promise.all([
+            supabase.from('event_rsvps').select('event_id').eq('user_id', user.id),
+            supabase.from('event_saved').select('event_id').eq('user_id', user.id),
+          ])
+
+        if (rsvpErr || savedErr) {
+          console.error(rsvpErr || savedErr)
           toast({ title: 'Error', description: 'Failed to load your calendar', variant: 'destructive' })
+          setLoading(false)
+          return
         }
 
-        const mapped: Row[] = (data ?? [])
-          .filter((r: any) => r.event)
-          .map((r: any) => ({ event: r.event as Event, rsvpd: !!r.rsvpd, saved: !!r.saved }))
+        const rsvpIds = new Set<string>((rsvpRows ?? []).map((r: any) => r.event_id))
+        const savedIds = new Set<string>((savedRows ?? []).map((r: any) => r.event_id))
+        const allIds = Array.from(new Set<string>([...rsvpIds, ...savedIds]))
+
+        let events: Event[] = []
+        if (allIds.length) {
+          const { data: evs, error: evErr } = await supabase
+            .from('events')
+            .select('*')
+            .in('id', allIds)
+
+          if (evErr) {
+            console.error(evErr)
+            toast({ title: 'Error', description: 'Failed to load your events', variant: 'destructive' })
+            setLoading(false)
+            return
+          }
+          events = (evs ?? []) as Event[]
+        }
+
+        const mapped: Row[] = events.map((ev) => ({
+          event: ev,
+          rsvpd: rsvpIds.has(ev.id as any),
+          saved: savedIds.has(ev.id as any),
+        }))
 
         if (mounted) setRows(mapped)
         setLoading(false)

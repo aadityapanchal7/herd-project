@@ -1,4 +1,3 @@
-// components/realtime-chat.tsx
 'use client';
 
 import { cn } from '@/lib/utils';
@@ -37,7 +36,6 @@ function formatDayLabel(date: Date) {
   if (diffDays === 0) return 'Today';
   if (diffDays === 1) return 'Yesterday';
 
-  // Show weekday for recent context; include year if different
   const opts: Intl.DateTimeFormatOptions = {
     weekday: 'short',
     month: 'short',
@@ -51,10 +49,11 @@ function formatDayLabel(date: Date) {
 
 function DateDivider({ ts }: { ts: string }) {
   const label = formatDayLabel(new Date(ts));
+  // keep this visually light so it doesn’t “push” message groupings around
   return (
-    <div className="my-4 flex items-center gap-3">
+    <div className="my-3 flex items-center gap-3 px-1">
       <div className="h-px flex-1 bg-border" />
-      <span className="text-xs text-muted-foreground whitespace-nowrap">
+      <span className="text-[11px] text-muted-foreground whitespace-nowrap">
         {label}
       </span>
       <div className="h-px flex-1 bg-border" />
@@ -181,6 +180,7 @@ export function RealtimeChat({
       const showHeader =
         !isOwn && (!prevNonDeleted || !sameSender || gapMs >= 60 * 60 * 1000);
 
+      // Render ONE ChatMessageItem per message (reactions remain inside it).
       items.push(
         <div key={message.id} className="animate-in fade-in slide-in-from-bottom-4 duration-300">
           <ChatMessageItem
@@ -213,17 +213,20 @@ export function RealtimeChat({
 
       <CardContent className="flex flex-1 flex-col p-0">
         {/* Messages */}
-        <div ref={containerRef} className="flex-1 space-y-4 overflow-y-auto p-4">
+        <div ref={containerRef} className="flex-1 overflow-y-auto p-4">
           {allMessages.length === 0 ? (
             <div className="text-center text-sm text-muted-foreground">
               No messages yet. Start the conversation!
             </div>
           ) : null}
-          <div className="space-y-1">{renderedList}</div>
+
+          {/* IMPORTANT: no extra wrappers that change layout of ChatMessageItem.
+             We just dump the sequence (dividers + message items). */}
+          {renderedList}
         </div>
 
         {/* Composer */}
-        <form onSubmit={handleSendMessage} className="flex w-full gap-2 border-t border-border p-4">
+        <form onSubmit={handleSendMessage} className="flex w-full gap-2 border-top border-border p-4">
           <Input
             className={cn(
               'rounded-full bg-background text-sm transition-all duration-300',
@@ -247,3 +250,6 @@ export function RealtimeChat({
     </Card>
   );
 }
+
+// ✅ Provide a default export so dynamic() can load it reliably.
+export default RealtimeChat;
