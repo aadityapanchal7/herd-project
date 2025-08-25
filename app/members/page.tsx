@@ -47,25 +47,29 @@ export default function MembersPage() {
 
   // Fetch your profile, then peers
   useEffect(() => {
-    if (!isAuthenticated || !user) return setLoading(false)
+    if (!isAuthenticated || !user) {
+      setLoading(false)
+      return
+    }
 
-    async function loadMembers() {
-      if (!user) {
-        setLoading(false)
-        return;
-      }
+    const loadMembers = async () => {
       setLoading(true)
 
-      // 1) Get current user's university
-      const { data: me, error: meErr } = await supabase.from("profiles").select("university").eq("id", user.id).single()
+      // 1) Grab current user's university
+      const { data: me, error: meErr } = await supabase
+        .from("profiles")
+        .select("university")
+        .eq("id", user.id)
+        .single()
 
       if (meErr || !me) {
         toast({ title: "Error", description: "Could not load your profile.", variant: "destructive" })
-        return setLoading(false)
+        setLoading(false)
+        return
       }
-      setUniversity(me.university)
+      setUniversity(me.university ?? "")
 
-      // 2) Get everyone from that university
+      // 2) Everyone in the same university
       const { data: peers, error: peersErr } = await supabase
         .from("profiles")
         .select("id, first_name, last_name, avatar_url")
@@ -85,25 +89,26 @@ export default function MembersPage() {
     loadMembers()
   }, [isAuthenticated, user, toast])
 
-  // Filter and sort members when search query or sort option changes
+  // Filter + sort
   useEffect(() => {
     if (!members.length) return
-
     let filtered = [...members]
 
-    // Apply search filter
     if (searchQuery) {
-      const query = searchQuery.toLowerCase()
-      filtered = filtered.filter((member) => `${member.first_name} ${member.last_name}`.toLowerCase().includes(query))
+      const q = searchQuery.toLowerCase()
+      filtered = filtered.filter(m => `${m.first_name} ${m.last_name}`.toLowerCase().includes(q))
     }
 
-    // Apply sorting
     switch (sortOption) {
       case "name-asc":
-        filtered.sort((a, b) => `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`))
+        filtered.sort((a, b) =>
+          `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`)
+        )
         break
       case "name-desc":
-        filtered.sort((a, b) => `${b.first_name} ${b.last_name}`.localeCompare(`${a.first_name} ${a.last_name}`))
+        filtered.sort((a, b) =>
+          `${b.first_name} ${b.last_name}`.localeCompare(`${a.first_name} ${a.last_name}`)
+        )
         break
     }
 
@@ -128,11 +133,9 @@ export default function MembersPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {Array(8)
-              .fill(0)
-              .map((_, i) => (
-                <Skeleton key={i} className="h-48 rounded-xl" />
-              ))}
+            {Array.from({ length: 8 }).map((_, i) => (
+              <Skeleton key={i} className="h-48 rounded-xl" />
+            ))}
           </div>
         </main>
       </div>
@@ -146,15 +149,18 @@ export default function MembersPage() {
       <div className="university-primary-bg text-white py-8">
         <div className="container max-w-6xl mx-auto px-4">
           <h1 className="text-3xl md:text-4xl font-bold">Members</h1>
-          <p className="mt-2 text-white/80">Connect with other students from {university}</p>
+          <p className="mt-2 text-white/80">
+            Connect with other students{university ? ` from ${university}` : ""}
+          </p>
         </div>
       </div>
+
       <main className="flex-1 container max-w-6xl mx-auto py-10 px-4">
-        {members.length > 0 ? (
+        {filteredMembers.length > 0 ? (
           <>
             <div className="flex flex-col md:flex-row justify-between gap-4 mb-8">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
                   placeholder="Search members by name"
                   value={searchQuery}
@@ -169,8 +175,8 @@ export default function MembersPage() {
                     <SelectValue placeholder="Sort by" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="name-asc">Name (A-Z)</SelectItem>
-                    <SelectItem value="name-desc">Name (Z-A)</SelectItem>
+                    <SelectItem value="name-asc">Name (A–Z)</SelectItem>
+                    <SelectItem value="name-desc">Name (Z–A)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -181,10 +187,12 @@ export default function MembersPage() {
                 <Users className="h-5 w-5 university-primary-text" />
                 <h2 className="text-xl font-semibold">All Members ({filteredMembers.length})</h2>
               </div>
-              <div className="flex items-center gap-2">
-                <School className="h-5 w-5 university-primary-text" />
-                <span className="text-sm font-medium">{university}</span>
-              </div>
+              {university && (
+                <div className="flex items-center gap-2">
+                  <School className="h-5 w-5 university-primary-text" />
+                  <span className="text-sm font-medium">{university}</span>
+                </div>
+              )}
             </div>
 
             <AnimatePresence>
@@ -203,13 +211,24 @@ export default function MembersPage() {
                   >
                     <Card className="flex flex-col items-center p-6 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow">
                       <Avatar className="w-16 h-16 mb-3 border-2 university-border">
-                        <AvatarImage src={m.avatar_url ?? ''} alt={`${m.first_name} ${m.last_name}`} />
-                        <AvatarFallback>{`${m.first_name[0]}${m.last_name[0]}`}</AvatarFallback>
+                        <AvatarImage
+                          src={m.avatar_url ?? ""}
+                          alt={`${m.first_name} ${m.last_name}`}
+                        />
+                        <AvatarFallback>
+                          {`${(m.first_name?.[0] ?? "").toUpperCase()}${(m.last_name?.[0] ?? "").toUpperCase()}`}
+                        </AvatarFallback>
                       </Avatar>
                       <h3 className="font-medium text-lg text-center">
                         {m.first_name} {m.last_name}
                       </h3>
-                      <button className="mt-3 text-sm university-primary-text hover:underline">View Profile</button>
+
+                      <button
+                        className="mt-3 text-sm university-primary-text hover:underline"
+                        onClick={() => router.push(`/members/${m.id}`)}
+                      >
+                        View Profile
+                      </button>
                     </Card>
                   </motion.div>
                 ))}
@@ -221,7 +240,7 @@ export default function MembersPage() {
             <Users className="h-16 w-16 mx-auto text-[#8a70d6] mb-4" />
             <h2 className="text-2xl font-bold mb-2">No Members Found</h2>
             <p className="text-gray-600 max-w-md mx-auto mb-8">
-              No members have joined from <strong>{university}</strong> yet. Be the first to invite your classmates!
+              No members have joined{university ? ` from ${university}` : ""} yet. Invite your classmates!
             </p>
             <Button size="lg" className="bg-[#8a70d6] hover:bg-[#7860c0] text-white">
               <UserPlus className="mr-2 h-5 w-5" />
