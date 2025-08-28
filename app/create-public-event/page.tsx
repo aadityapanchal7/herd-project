@@ -25,6 +25,7 @@ import { parse, format } from "date-fns";
 import { getUniversityByName } from "@/lib/universities";
 import { VENUE_COORDS } from "@/lib/school-cords";
 import { motion } from "framer-motion";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const DEFAULT_MAX_ATTENDEES = 100;
 
@@ -32,6 +33,7 @@ export default function CreatePublicEventPage() {
   const { toast } = useToast();
   const router = useRouter();
   const { isAuthenticated, user, loading } = useAuth();
+  const isMobile = useIsMobile();
 
   // derive school key (expand as needed)
   let school = "";
@@ -257,18 +259,22 @@ export default function CreatePublicEventPage() {
   return (
     <div className="min-h-screen bg-[#f8f7fc] flex flex-col">
       <Header />
-      <main className="container mx-auto px-4 py-10">
+      <main className={`container mx-auto px-4 ${isMobile ? 'py-6' : 'py-10'}`}>
         {/* Tabs to switch routes */}
         <Tabs
           value="public"
           onValueChange={(v) =>
             router.push(v === "private" ? "/create-private-event" : "/create-public-event")
           }
-          className="mb-6"
+          className={isMobile ? 'mb-4' : 'mb-6'}
         >
-          <TabsList>
-            <TabsTrigger value="public">Create Public Event</TabsTrigger>
-            <TabsTrigger value="private">Create Private Event</TabsTrigger>
+          <TabsList className={isMobile ? 'text-sm' : ''}>
+            <TabsTrigger value="public" className={isMobile ? 'text-sm px-3' : ''}>
+              {isMobile ? 'Public' : 'Create Public Event'}
+            </TabsTrigger>
+            <TabsTrigger value="private" className={isMobile ? 'text-sm px-3' : ''}>
+              {isMobile ? 'Private' : 'Create Private Event'}
+            </TabsTrigger>
           </TabsList>
         </Tabs>
 
@@ -276,9 +282,11 @@ export default function CreatePublicEventPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="bg-white p-6 rounded-lg shadow"
+          className={`bg-white rounded-lg shadow ${isMobile ? 'p-4' : 'p-6'}`}
         >
-          <h1 className="text-2xl font-bold university-primary-text mb-6">
+          <h1 className={`font-bold university-primary-text ${
+            isMobile ? 'text-xl mb-4' : 'text-2xl mb-6'
+          }`}>
             Create New Public Event
           </h1>
 
@@ -290,7 +298,7 @@ export default function CreatePublicEventPage() {
             </Alert>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className={isMobile ? 'space-y-4' : 'space-y-6'}>
             {/* Title */}
             <FormRow label="Event Title" id="title">
               <Input
@@ -578,20 +586,29 @@ export default function CreatePublicEventPage() {
               />
             </div>
 
-            <div className="flex justify-end space-x-4">
+            <div className={`flex ${
+              isMobile 
+                ? 'flex-col space-y-2' 
+                : 'justify-end space-x-4'
+            }`}>
               <Button
                 variant="outline"
                 type="button"
                 onClick={() => router.push("/dashboard")}
+                size={isMobile ? "sm" : "default"}
+                className={isMobile ? 'w-full' : ''}
               >
-                Cancel
+                <span className={isMobile ? 'text-sm' : ''}>Cancel</span>
               </Button>
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="university-button hover:bg-[#7a60c6]"
+                className={`university-button hover:bg-[#7a60c6] ${isMobile ? 'w-full' : ''}`}
+                size={isMobile ? "sm" : "default"}
               >
-                {isSubmitting ? "Creating..." : "Create Event"}
+                <span className={isMobile ? 'text-sm' : ''}>
+                  {isSubmitting ? "Creating..." : "Create Event"}
+                </span>
               </Button>
             </div>
           </form>

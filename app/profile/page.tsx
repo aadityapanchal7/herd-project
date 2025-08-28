@@ -16,12 +16,14 @@ import { supabase } from "@/lib/supabase";
 import { getUniversities, type University } from "@/lib/universities";
 import ImageCropper from "@/components/image-cropper";
 import { motion } from "framer-motion";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function ProfilePage() {
   const { toast } = useToast();
   const router = useRouter();
   const { isAuthenticated, user, loading, refreshSession } = useAuth();
   const { setUniversityColors } = useTheme();
+  const isMobile = useIsMobile();
 
   // form + ui state
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -250,14 +252,14 @@ export default function ProfilePage() {
     <div className="min-h-screen flex flex-col bg-[#f8f7fc]">
       <Header />
 
-      <main className="flex-1 container max-w-5xl mx-auto py-8 px-4">
+      <main className={`flex-1 container mx-auto px-4 ${isMobile ? 'py-4 max-w-full' : 'py-8 max-w-5xl'}`}>
         <motion.div
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35 }}
-          className="bg-white rounded-xl shadow p-6"
+          className={`bg-white rounded-xl shadow ${isMobile ? 'p-4' : 'p-6'}`}
         >
-          <h1 className="text-2xl font-bold university-primary-text mb-6">Edit Profile</h1>
+          <h1 className={`font-bold university-primary-text ${isMobile ? 'text-xl mb-4' : 'text-2xl mb-6'}`}>Edit Profile</h1>
 
           {formError && (
             <Alert variant="destructive" className="mb-6">
@@ -267,13 +269,15 @@ export default function ProfilePage() {
             </Alert>
           )}
 
-          <div className="flex gap-8">
-            {/* Left: small avatar column */}
-            <div className="w-[220px] shrink-0 flex flex-col items-center">
+          <div className={`${isMobile ? 'flex flex-col gap-6' : 'flex gap-8'}`}>
+            {/* Avatar section */}
+            <div className={`${isMobile ? 'flex flex-col items-center w-full' : 'w-[220px] shrink-0 flex flex-col items-center'}`}>
               <div className="relative">
-                {/* ~160px avatar to match screenshot scale */}
+                {/* Avatar with responsive size */}
                 <div
-                  className="relative w-40 h-40 rounded-full flex items-center justify-center overflow-hidden"
+                  className={`relative rounded-full flex items-center justify-center overflow-hidden ${
+                    isMobile ? 'w-32 h-32' : 'w-40 h-40'
+                  }`}
                   style={{ backgroundColor: "var(--primary-color, #b45309)" }}
                 >
                   {/* subtle ring */}
@@ -288,23 +292,25 @@ export default function ProfilePage() {
                       }}
                     />
                   ) : (
-                    <span className="text-white text-5xl font-extrabold tracking-wider select-none">
-                      {initials || <User className="w-10 h-10 text-white" />}
+                    <span className={`text-white font-extrabold tracking-wider select-none ${
+                      isMobile ? 'text-4xl' : 'text-5xl'
+                    }`}>
+                      {initials || <User className={`text-white ${isMobile ? 'w-8 h-8' : 'w-10 h-10'}`} />}
                     </span>
                   )}
                 </div>
 
                 {/* Camera button */}
-                <div className="absolute -bottom-3 -right-3">
+                <div className={`absolute ${isMobile ? '-bottom-2 -right-2' : '-bottom-3 -right-3'}`}>
                   <label htmlFor="avatar-upload" className="cursor-pointer">
                     <div
-                      className="rounded-full p-3 shadow-md"
+                      className={`rounded-full shadow-md ${isMobile ? 'p-2' : 'p-3'}`}
                       style={{ backgroundColor: "var(--primary-color, #b45309)" }}
                     >
                       {isUploading ? (
-                        <Loader2 className="h-5 w-5 animate-spin text-white" />
+                        <Loader2 className={`animate-spin text-white ${isMobile ? 'h-4 w-4' : 'h-5 w-5'}`} />
                       ) : (
-                        <Camera className="h-5 w-5 text-white" />
+                        <Camera className={`text-white ${isMobile ? 'h-4 w-4' : 'h-5 w-5'}`} />
                       )}
                     </div>
                     <input
@@ -319,17 +325,17 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              <p className="mt-5 text-sm text-gray-500 text-center">
+              <p className={`text-gray-500 text-center ${isMobile ? 'mt-3 text-xs' : 'mt-5 text-sm'}`}>
                 Upload a profile picture (max 5MB)
               </p>
-              {photoUpdated && <span className="mt-1 text-xs text-gray-400">Photo updated</span>}
+              {photoUpdated && <span className={`text-gray-400 ${isMobile ? 'mt-0.5 text-xs' : 'mt-1 text-xs'}`}>Photo updated</span>}
             </div>
 
-            {/* Right: form */}
+            {/* Form section */}
             <div className="flex-1">
-              <form onSubmit={handleSubmit} className="space-y-6">
+              <form onSubmit={handleSubmit} className={isMobile ? 'space-y-4' : 'space-y-6'}>
                 {/* Names row */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className={`grid grid-cols-1 gap-4 ${isMobile ? '' : 'md:grid-cols-2 gap-6'}`}>
                   <div className="space-y-2">
                     <Label htmlFor="firstName">First Name</Label>
                     <Input
@@ -355,22 +361,28 @@ export default function ProfilePage() {
                 {/* User ID row (copyable) */}
                 {user?.id && (
                   <div className="space-y-1">
-                    <Label>User ID</Label>
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 flex items-center rounded-md border border-input bg-muted/20 px-3 py-2">
-                        <code className="text-xs text-zinc-700 break-all">{user.id}</code>
+                    <Label className={isMobile ? 'text-sm' : ''}>User ID</Label>
+                    <div className={`flex items-center ${isMobile ? 'gap-1' : 'gap-2'}`}>
+                      <div className={`flex-1 flex items-center rounded-md border border-input bg-muted/20 ${isMobile ? 'px-2 py-1.5' : 'px-3 py-2'}`}>
+                        <code className={`text-zinc-700 break-all ${isMobile ? 'text-xs' : 'text-xs'}`}>
+                          {isMobile ? user.id.substring(0, 20) + "..." : user.id}
+                        </code>
                       </div>
                       <button
                         type="button"
                         onClick={handleCopyId}
                         aria-label="Copy user id"
-                        className="h-10 w-10 flex items-center justify-center rounded-md border hover:bg-zinc-50"
+                        className={`flex items-center justify-center rounded-md border hover:bg-zinc-50 ${isMobile ? 'h-8 w-8' : 'h-10 w-10'}`}
                         title="Copy to clipboard"
                       >
-                        {copied ? <Check className="w-4 h-4 text-green-600" /> : <Clipboard className="w-4 h-4 text-zinc-700" />}
+                        {copied ? (
+                          <Check className={`text-green-600 ${isMobile ? 'w-3 h-3' : 'w-4 h-4'}`} />
+                        ) : (
+                          <Clipboard className={`text-zinc-700 ${isMobile ? 'w-3 h-3' : 'w-4 h-4'}`} />
+                        )}
                       </button>
                     </div>
-                    <p className="text-xs text-zinc-500">
+                    <p className={`text-zinc-500 ${isMobile ? 'text-xs' : 'text-xs'}`}>
                       This is your account ID. Share only with trusted parties.
                     </p>
                   </div>
@@ -378,56 +390,69 @@ export default function ProfilePage() {
 
                 {/* Email */}
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input id="email" name="email" value={formData.email} disabled className="bg-gray-50" />
-                  <p className="text-xs text-gray-500">Email cannot be changed</p>
+                  <Label htmlFor="email" className={isMobile ? 'text-sm' : ''}>Email</Label>
+                  <Input 
+                    id="email" 
+                    name="email" 
+                    value={formData.email} 
+                    disabled 
+                    className={`bg-gray-50 ${isMobile ? 'text-sm' : ''}`} 
+                  />
+                  <p className={`text-gray-500 ${isMobile ? 'text-xs' : 'text-xs'}`}>Email cannot be changed</p>
                 </div>
 
                 {/* University */}
                 <div className="space-y-2">
-                  <Label>University</Label>
-                  <div className="flex items-center h-10 border rounded-md border-input bg-gray-50 px-3">
+                  <Label className={isMobile ? 'text-sm' : ''}>University</Label>
+                  <div className={`flex items-center border rounded-md border-input bg-gray-50 ${isMobile ? 'h-9 px-2' : 'h-10 px-3'}`}>
                     {loadingUniversities ? (
                       <>
-                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground mr-2" />
-                        <span className="text-sm text-muted-foreground">Loading university...</span>
+                        <Loader2 className={`animate-spin text-muted-foreground mr-2 ${isMobile ? 'h-3 w-3' : 'h-4 w-4'}`} />
+                        <span className={`text-muted-foreground ${isMobile ? 'text-xs' : 'text-sm'}`}>Loading university...</span>
                       </>
                     ) : (
                       <>
                         {selectedUniversity && (
                           <div
-                            className="w-3 h-3 rounded-full mr-2"
+                            className={`rounded-full mr-2 ${isMobile ? 'w-2 h-2' : 'w-3 h-3'}`}
                             style={{ backgroundColor: selectedUniversity.primary_color }}
                           />
                         )}
-                        <span>{formData.university || "No university selected"}</span>
+                        <span className={isMobile ? 'text-sm' : ''}>{formData.university || "No university selected"}</span>
                       </>
                     )}
                   </div>
-                  <p className="text-xs text-gray-500">University cannot be changed after account creation</p>
+                  <p className={`text-gray-500 ${isMobile ? 'text-xs' : 'text-xs'}`}>University cannot be changed after account creation</p>
                 </div>
 
                 {/* Actions */}
-                <div className="flex justify-end gap-3 pt-2">
-                  <Button type="button" variant="outline" onClick={() => router.push("/dashboard")}>
-                    Cancel
+                <div className={`flex pt-2 ${isMobile ? 'flex-col gap-2' : 'justify-end gap-3'}`}>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => router.push("/dashboard")}
+                    size={isMobile ? "sm" : "default"}
+                    className={isMobile ? 'w-full' : ''}
+                  >
+                    <span className={isMobile ? 'text-sm' : ''}>Cancel</span>
                   </Button>
                   <Button
                     type="submit"
                     className={`${dirty ? "university-button" : "bg-gray-200 text-gray-600 cursor-default"} ${
                       savedPulse ? "animate-pulse" : ""
-                    }`}
+                    } ${isMobile ? 'w-full' : ''}`}
                     disabled={isSubmitting || !dirty}
+                    size={isMobile ? "sm" : "default"}
                   >
                     {isSubmitting ? (
                       <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Saving…
+                        <Loader2 className={`mr-2 animate-spin ${isMobile ? 'h-3 w-3' : 'h-4 w-4'}`} />
+                        <span className={isMobile ? 'text-sm' : ''}>Saving…</span>
                       </>
                     ) : dirty ? (
-                      "Save Changes"
+                      <span className={isMobile ? 'text-sm' : ''}>Save Changes</span>
                     ) : (
-                      "Saved"
+                      <span className={isMobile ? 'text-sm' : ''}>Saved</span>
                     )}
                   </Button>
                 </div>

@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { motion, AnimatePresence } from "framer-motion"
+import { useIsMobile } from "@/hooks/use-mobile"
 
 type Profile = {
   id: string
@@ -32,6 +33,7 @@ export default function MembersPage() {
   const [sortOption, setSortOption] = useState("name-asc")
   const router = useRouter()
   const { toast } = useToast()
+  const isMobile = useIsMobile()
 
   // Redirect unauthenticated users
   useEffect(() => {
@@ -120,13 +122,13 @@ export default function MembersPage() {
     return (
       <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#f0edfb] to-[#f8f7fc]">
         <Header />
-        <div className="university-primary-bg text-white py-8">
-          <div className="container max-w-6xl mx-auto px-4">
-            <Skeleton className="h-10 w-48 bg-white/20" />
-            <Skeleton className="h-6 w-64 mt-2 bg-white/20" />
+        <div className={`university-primary-bg text-white ${isMobile ? 'py-6' : 'py-8'}`}>
+          <div className={`container mx-auto px-4 ${isMobile ? 'max-w-full' : 'max-w-6xl'}`}>
+            <Skeleton className={`bg-white/20 ${isMobile ? 'h-8 w-40' : 'h-10 w-48'}`} />
+            <Skeleton className={`bg-white/20 mt-2 ${isMobile ? 'h-5 w-56' : 'h-6 w-64'}`} />
           </div>
         </div>
-        <main className="flex-1 container max-w-6xl mx-auto py-10 px-4">
+        <main className={`flex-1 container mx-auto px-4 ${isMobile ? 'py-6 max-w-full' : 'py-10 max-w-6xl'}`}>
           <div className="flex flex-col md:flex-row justify-between gap-4 mb-8">
             <Skeleton className="h-10 flex-1" />
             <Skeleton className="h-10 w-40" />
@@ -146,51 +148,51 @@ export default function MembersPage() {
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#f0edfb] to-[#f8f7fc]">
       <Header />
-      <div className="university-primary-bg text-white py-8">
-        <div className="container max-w-6xl mx-auto px-4">
-          <h1 className="text-3xl md:text-4xl font-bold">Members</h1>
-          <p className="mt-2 text-white/80">
+      <div className={`university-primary-bg text-white ${isMobile ? 'py-6' : 'py-8'}`}>
+        <div className={`container mx-auto px-4 ${isMobile ? 'max-w-full' : 'max-w-6xl'}`}>
+          <h1 className={`font-bold ${isMobile ? 'text-2xl' : 'text-3xl md:text-4xl'}`}>Members</h1>
+          <p className={`mt-2 text-white/80 ${isMobile ? 'text-sm' : ''}`}>
             Connect with other students{university ? ` from ${university}` : ""}
           </p>
         </div>
       </div>
 
-      <main className="flex-1 container max-w-6xl mx-auto py-10 px-4">
+      <main className={`flex-1 container mx-auto px-4 ${isMobile ? 'py-6 max-w-full' : 'py-10 max-w-6xl'}`}>
         {filteredMembers.length > 0 ? (
           <>
-            <div className="flex flex-col md:flex-row justify-between gap-4 mb-8">
+            <div className={`flex justify-between gap-4 ${isMobile ? 'flex-col mb-6' : 'flex-col md:flex-row mb-8'}`}>
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Search className={`absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 ${isMobile ? 'h-3 w-3' : 'h-4 w-4'}`} />
                 <Input
                   placeholder="Search members by name"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 bg-white"
+                  className={`bg-white ${isMobile ? 'pl-8 text-sm' : 'pl-10'}`}
                 />
               </div>
               <div className="flex gap-2 items-center">
-                <Filter className="h-4 w-4 text-gray-500" />
+                <Filter className={`text-gray-500 ${isMobile ? 'h-3 w-3' : 'h-4 w-4'}`} />
                 <Select value={sortOption} onValueChange={setSortOption}>
-                  <SelectTrigger className="w-[180px] bg-white">
+                  <SelectTrigger className={`bg-white ${isMobile ? 'w-full text-sm' : 'w-[180px]'}`}>
                     <SelectValue placeholder="Sort by" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="name-asc">Name (A–Z)</SelectItem>
-                    <SelectItem value="name-desc">Name (Z–A)</SelectItem>
+                    <SelectItem value="name-asc" className={isMobile ? 'text-sm' : ''}>Name (A–Z)</SelectItem>
+                    <SelectItem value="name-desc" className={isMobile ? 'text-sm' : ''}>Name (Z–A)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
-            <div className="flex items-center justify-between mb-6">
+            <div className={`flex items-center mb-6 ${isMobile ? 'flex-col gap-3' : 'justify-between'}`}>
               <div className="flex items-center gap-2">
-                <Users className="h-5 w-5 university-primary-text" />
-                <h2 className="text-xl font-semibold">All Members ({filteredMembers.length})</h2>
+                <Users className={`university-primary-text ${isMobile ? 'h-4 w-4' : 'h-5 w-5'}`} />
+                <h2 className={`font-semibold ${isMobile ? 'text-lg' : 'text-xl'}`}>All Members ({filteredMembers.length})</h2>
               </div>
               {university && (
                 <div className="flex items-center gap-2">
-                  <School className="h-5 w-5 university-primary-text" />
-                  <span className="text-sm font-medium">{university}</span>
+                  <School className={`university-primary-text ${isMobile ? 'h-4 w-4' : 'h-5 w-5'}`} />
+                  <span className={`font-medium ${isMobile ? 'text-xs' : 'text-sm'}`}>{university}</span>
                 </div>
               )}
             </div>
@@ -198,7 +200,11 @@ export default function MembersPage() {
             <AnimatePresence>
               <motion.div
                 layout
-                className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
+                className={`grid gap-4 ${
+                  isMobile 
+                    ? 'grid-cols-2' 
+                    : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6'
+                }`}
               >
                 {filteredMembers.map((m, idx) => (
                   <motion.div
@@ -209,22 +215,30 @@ export default function MembersPage() {
                     transition={{ duration: 0.5, ease: "easeOut", delay: idx * 0.05 }}
                     layout
                   >
-                    <Card className="flex flex-col items-center p-6 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow">
-                      <Avatar className="w-16 h-16 mb-3 border-2 university-border">
+                    <Card className={`flex flex-col items-center bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow ${
+                      isMobile ? 'p-3' : 'p-6'
+                    }`}>
+                      <Avatar className={`border-2 university-border ${
+                        isMobile ? 'w-12 h-12 mb-2' : 'w-16 h-16 mb-3'
+                      }`}>
                         <AvatarImage
                           src={m.avatar_url ?? ""}
                           alt={`${m.first_name} ${m.last_name}`}
                         />
-                        <AvatarFallback>
+                        <AvatarFallback className={isMobile ? 'text-xs' : ''}>
                           {`${(m.first_name?.[0] ?? "").toUpperCase()}${(m.last_name?.[0] ?? "").toUpperCase()}`}
                         </AvatarFallback>
                       </Avatar>
-                      <h3 className="font-medium text-lg text-center">
+                      <h3 className={`font-medium text-center ${
+                        isMobile ? 'text-sm leading-tight' : 'text-lg'
+                      }`}>
                         {m.first_name} {m.last_name}
                       </h3>
 
                       <button
-                        className="mt-3 text-sm university-primary-text hover:underline"
+                        className={`university-primary-text hover:underline ${
+                          isMobile ? 'mt-2 text-xs' : 'mt-3 text-sm'
+                        }`}
                         onClick={() => router.push(`/members/${m.id}`)}
                       >
                         View Profile
@@ -236,15 +250,15 @@ export default function MembersPage() {
             </AnimatePresence>
           </>
         ) : (
-          <div className="text-center py-16 bg-white rounded-xl shadow-sm mt-4">
-            <Users className="h-16 w-16 mx-auto text-[#8a70d6] mb-4" />
-            <h2 className="text-2xl font-bold mb-2">No Members Found</h2>
-            <p className="text-gray-600 max-w-md mx-auto mb-8">
+          <div className={`text-center bg-white rounded-xl shadow-sm mt-4 ${isMobile ? 'py-12 px-4' : 'py-16'}`}>
+            <Users className={`mx-auto text-[#8a70d6] mb-4 ${isMobile ? 'h-12 w-12' : 'h-16 w-16'}`} />
+            <h2 className={`font-bold mb-2 ${isMobile ? 'text-xl' : 'text-2xl'}`}>No Members Found</h2>
+            <p className={`text-gray-600 mx-auto mb-8 ${isMobile ? 'text-sm max-w-sm' : 'max-w-md'}`}>
               No members have joined{university ? ` from ${university}` : ""} yet. Invite your classmates!
             </p>
-            <Button size="lg" className="bg-[#8a70d6] hover:bg-[#7860c0] text-white">
-              <UserPlus className="mr-2 h-5 w-5" />
-              Invite Classmates
+            <Button size={isMobile ? "default" : "lg"} className="bg-[#8a70d6] hover:bg-[#7860c0] text-white">
+              <UserPlus className={`mr-2 ${isMobile ? 'h-4 w-4' : 'h-5 w-5'}`} />
+              <span className={isMobile ? 'text-sm' : ''}>Invite Classmates</span>
             </Button>
           </div>
         )}
