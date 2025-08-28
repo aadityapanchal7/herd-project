@@ -26,6 +26,7 @@ import { getUniversityByName } from "@/lib/universities";
 import { VENUE_COORDS } from "@/lib/school-cords";
 import { motion } from "framer-motion";
 import { AvatarThumb } from "@/components/avatar-thumb";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 type Profile = {
   id: string;
@@ -40,6 +41,7 @@ export default function CreatePrivateEventPage() {
   const { toast } = useToast();
   const router = useRouter();
   const { isAuthenticated, user, loading } = useAuth();
+  const isMobile = useIsMobile();
 
   // derive school key (extend as needed)
   let school = "";
@@ -307,18 +309,22 @@ export default function CreatePrivateEventPage() {
   return (
     <div className="min-h-screen bg-[#f8f7fc] flex flex-col">
       <Header />
-      <main className="container mx-auto px-4 py-10">
+      <main className={`container mx-auto px-4 ${isMobile ? 'py-6' : 'py-10'}`}>
         {/* Tabs to switch routes */}
         <Tabs
           value="private"
           onValueChange={(v) =>
             router.push(v === "public" ? "/create-public-event" : "/create-private-event")
           }
-          className="mb-6"
+          className={isMobile ? 'mb-4' : 'mb-6'}
         >
-          <TabsList>
-            <TabsTrigger value="public">Create Public Event</TabsTrigger>
-            <TabsTrigger value="private">Create Private Event</TabsTrigger>
+          <TabsList className={isMobile ? 'text-sm' : ''}>
+            <TabsTrigger value="public" className={isMobile ? 'text-sm px-3' : ''}>
+              {isMobile ? 'Public' : 'Create Public Event'}
+            </TabsTrigger>
+            <TabsTrigger value="private" className={isMobile ? 'text-sm px-3' : ''}>
+              {isMobile ? 'Private' : 'Create Private Event'}
+            </TabsTrigger>
           </TabsList>
         </Tabs>
 
@@ -326,9 +332,11 @@ export default function CreatePrivateEventPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="bg-white p-6 rounded-lg shadow"
+          className={`bg-white rounded-lg shadow ${isMobile ? 'p-4' : 'p-6'}`}
         >
-          <h1 className="text-2xl font-bold university-primary-text mb-6">
+          <h1 className={`font-bold university-primary-text ${
+            isMobile ? 'text-xl mb-4' : 'text-2xl mb-6'
+          }`}>
             Create New Private Event
           </h1>
 
@@ -342,7 +350,7 @@ export default function CreatePrivateEventPage() {
 
           <motion.form
             onSubmit={handleSubmit}
-            className="space-y-6"
+            className={isMobile ? 'space-y-4' : 'space-y-6'}
             initial="hidden"
             animate="visible"
             variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.07 } } }}
@@ -626,13 +634,29 @@ export default function CreatePrivateEventPage() {
             {/* Buttons */}
             <motion.div
               variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } }}
-              className="flex justify-end space-x-4"
+              className={`flex ${
+                isMobile 
+                  ? 'flex-col space-y-2' 
+                  : 'justify-end space-x-4'
+              }`}
             >
-              <Button variant="outline" onClick={() => router.push("/dashboard")}>
-                Cancel
+              <Button 
+                variant="outline" 
+                onClick={() => router.push("/dashboard")}
+                size={isMobile ? "sm" : "default"}
+                className={isMobile ? 'w-full' : ''}
+              >
+                <span className={isMobile ? 'text-sm' : ''}>Cancel</span>
               </Button>
-              <Button type="submit" disabled={isSubmitting} className="university-button hover:bg-[#7a60c6]">
-                {isSubmitting ? "Creating..." : "Create Event"}
+              <Button 
+                type="submit" 
+                disabled={isSubmitting} 
+                className={`university-button hover:bg-[#7a60c6] ${isMobile ? 'w-full' : ''}`}
+                size={isMobile ? "sm" : "default"}
+              >
+                <span className={isMobile ? 'text-sm' : ''}>
+                  {isSubmitting ? "Creating..." : "Create Event"}
+                </span>
               </Button>
             </motion.div>
           </motion.form>

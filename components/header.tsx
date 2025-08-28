@@ -2,11 +2,11 @@
 
 import Image from 'next/image'
 import Link from "next/link"
-import { Mail, LogOut, User, PlusCircle, CalendarCheck, Users, Calendar, Heart } from "lucide-react"
+import { Mail, LogOut, User, PlusCircle, CalendarCheck, Users, Calendar, Heart, ArrowLeft } from "lucide-react"
 import { IconWrapper } from "@/components/icons/IconWrapper"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/context/auth-context"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,12 +23,29 @@ import { useIsMobile } from "@/hooks/use-mobile"
 export function Header() {
   const { isAuthenticated, user, logout } = useAuth()
   const router = useRouter()
+  const pathname = usePathname()
   const { toast } = useToast()
   const isMobile = useIsMobile()
+
+  // Define home pages
+  const homePages = ['/', '/dashboard']
+  const isHomePage = homePages.includes(pathname)
+  
+  // Show back button on mobile for non-home pages
+  const showBackButton = isMobile && !isHomePage
 
   const handleLogout = () => {
     logout()
     router.push("/")
+  }
+  
+  const handleBack = () => {
+    // Try to go back in history, fallback to home
+    if (window.history.length > 1) {
+      router.back()
+    } else {
+      router.push(isAuthenticated ? "/dashboard" : "/")
+    }
   }
 
   return (
@@ -39,24 +56,38 @@ export function Header() {
       className="sticky top-0 z-50 w-full border-b bg-white"
     >
       <div className="container flex h-16 items-center justify-between px-4 md:px-6">
-        <button
-          onClick={() => router.push(isAuthenticated ? "/dashboard" : "/")}
-          style={{ cursor: "pointer" }}
-          className="flex items-center gap-2 sm:gap-3"
-        >
-          <div className="flex items-center justify-center gap-2 sm:gap-3">
-            <Image
-              src="/herd-logo.jpg"
-              alt="Herd"
-              width={isMobile ? 32 : 40}
-              height={isMobile ? 32 : 40}
-              className="rounded-md"
-            />
-            <span className={`font-semibold university-primary-text ${isMobile ? 'text-lg' : 'text-xl'}`}>
-              Herd
-            </span>
-          </div>
-        </button>
+        <div className="flex items-center gap-2">
+          {showBackButton && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleBack}
+              className="p-1.5 h-8 w-8 hover:bg-gray-100 transition-colors duration-200 rounded-full"
+              aria-label="Go back"
+            >
+              <ArrowLeft className="h-4 w-4 text-gray-600" />
+            </Button>
+          )}
+          
+          <button
+            onClick={() => router.push(isAuthenticated ? "/dashboard" : "/")}
+            style={{ cursor: "pointer" }}
+            className="flex items-center gap-2 sm:gap-3"
+          >
+            <div className="flex items-center justify-center gap-2 sm:gap-3">
+              <Image
+                src="/herd-logo.jpg"
+                alt="Herd"
+                width={isMobile ? 32 : 40}
+                height={isMobile ? 32 : 40}
+                className="rounded-md"
+              />
+              <span className={`font-semibold university-primary-text ${isMobile ? 'text-lg' : 'text-xl'}`}>
+                Herd
+              </span>
+            </div>
+          </button>
+        </div>
 
         <div className="flex items-center gap-2 sm:gap-4">
           {isAuthenticated && (
